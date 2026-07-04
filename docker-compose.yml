@@ -11,6 +11,13 @@ x-app-env: &app-env
   JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
   ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
   REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+  SMTP_HOST: ${SMTP_HOST:-mailpit}
+  SMTP_PORT: ${SMTP_PORT:-1025}
+  SMTP_USERNAME: ${SMTP_USERNAME:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  EMAIL_FROM: ${EMAIL_FROM:-no-reply@online-cinema.local}
+  ACTIVATION_URL_BASE: ${ACTIVATION_URL_BASE:-http://localhost:8000/api/v1/auth/activate}
+  ACTIVATION_TOKEN_TTL_HOURS: ${ACTIVATION_TOKEN_TTL_HOURS:-24}
   MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
   MINIO_BUCKET: ${MINIO_BUCKET:-online-cinema}
   STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_change_me}
@@ -31,6 +38,7 @@ services:
       - db
       - redis
       - minio
+      - mailpit
 
   db:
     image: postgres:16-alpine
@@ -71,6 +79,12 @@ services:
     depends_on:
       - redis
       - db
+
+  mailpit:
+    image: axllent/mailpit:v1.20
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
