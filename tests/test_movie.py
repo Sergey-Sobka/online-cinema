@@ -68,7 +68,7 @@ async def setup_test_data(local_db: AsyncSession):
         imdb=8.8,
         votes=2500000,
         description="A thief who steals corporate secrets "
-                    "through the use of dream-sharing technology.",
+        "through the use of dream-sharing technology.",
         price=Decimal("14.99"),
         certification_id=cert.id,
         genres=[genre_action, genre_drama],
@@ -83,7 +83,7 @@ async def setup_test_data(local_db: AsyncSession):
         imdb=8.7,
         votes=1900000,
         description="When a beautiful stranger leads "
-                    "computer hacker Neo to a forbidding underworld...",
+        "computer hacker Neo to a forbidding underworld...",
         price=Decimal("9.99"),
         certification_id=cert.id,
         genres=[genre_action],
