@@ -76,7 +76,7 @@ async def get_movie_by_id(db: AsyncSession, movie_id: int) -> Movie | None:
             joinedload(Movie.certification),
         )
     )
-    return await db.scalar(stmt)
+    return (await db.scalars(stmt)).first()
 
 
 async def create_movie(db: AsyncSession, payload: MovieCreate) -> Movie:
