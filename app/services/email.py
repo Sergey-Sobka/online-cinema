@@ -4,6 +4,10 @@ from email.message import EmailMessage
 from app.core.config import Settings
 
 
+class EmailDeliveryError(Exception):
+    pass
+
+
 class EmailService:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -20,10 +24,19 @@ class EmailService:
             "This link is valid for 24 hours."
         )
 
-        with smtplib.SMTP(self._settings.smtp_host, self._settings.smtp_port) as smtp:
-            if self._settings.smtp_username and self._settings.smtp_password:
-                smtp.login(self._settings.smtp_username, self._settings.smtp_password)
-            smtp.send_message(message)
+        try:
+            with smtplib.SMTP(
+                host=self._settings.smtp_host,
+                port=self._settings.smtp_port,
+            ) as smtp:
+                if self._settings.smtp_username and self._settings.smtp_password:
+                    smtp.login(
+                        user=self._settings.smtp_username,
+                        password=self._settings.smtp_password,
+                    )
+                smtp.send_message(message)
+        except (OSError, smtplib.SMTPException) as exc:
+            raise EmailDeliveryError("Activation email could not be sent.") from exc
 
     def _build_activation_link(self, token: str) -> str:
         if self._settings.activation_url_base is not None:

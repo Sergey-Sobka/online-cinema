@@ -15,6 +15,7 @@ from app.main import app
 from app.models import ActivationToken, User, UserGroup, UserGroupEnum
 from app.schemas.auth import MessageResponse, RegisterRequest
 from app.services.auth import AuthService, cleanup_expired_activation_tokens
+from app.services.email import EmailDeliveryError
 
 
 class FakeEmailService:
@@ -23,6 +24,11 @@ class FakeEmailService:
 
     def send_activation_email(self, recipient: str, token: str) -> None:
         self.activation_emails.append((recipient, token))
+
+
+class FailingEmailService:
+    def send_activation_email(self, recipient: str, token: str) -> None:
+        raise EmailDeliveryError("SMTP is unavailable.")
 
 
 class FakeAuthService:
@@ -85,6 +91,24 @@ async def test_register_creates_inactive_user_activation_token_and_sends_email(
     assert verify_password("Password1", user.hashed_password)
     assert token.expires_at > datetime.now(UTC)
     assert email_service.activation_emails == [("user@example.com", token.token)]
+
+
+async def test_register_rolls_back_user_when_activation_email_fails(
+    db_session: AsyncSession,
+    settings: Settings,
+) -> None:
+    service = AuthService(db_session, settings, FailingEmailService())  # type: ignore[arg-type]
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.register(
+            RegisterRequest(email="user@example.com", password="Password1")
+        )
+
+    users = (await db_session.execute(select(User))).scalars().all()
+    tokens = (await db_session.execute(select(ActivationToken))).scalars().all()
+    assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert users == []
+    assert tokens == []
 
 
 async def test_register_rejects_duplicate_email(

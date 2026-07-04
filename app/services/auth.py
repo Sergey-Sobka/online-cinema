@@ -11,7 +11,7 @@ from app.core.security import hash_password, validate_password_complexity
 from app.db.session import AsyncSessionLocal
 from app.models import ActivationToken, User, UserGroup, UserGroupEnum
 from app.schemas.auth import MessageResponse, RegisterRequest, ResendActivationRequest
-from app.services.email import EmailService
+from app.services.email import EmailDeliveryError, EmailService
 
 
 class AuthService:
@@ -42,9 +42,10 @@ class AuthService:
 
         activation_token = self._create_activation_token(user)
         self._session.add(activation_token)
-        await self._session.commit()
+        await self._session.flush()
 
-        self._email_service.send_activation_email(email, activation_token.token)
+        await self._send_activation_email(email, activation_token.token)
+        await self._session.commit()
         return MessageResponse(message="Registration successful. Check your email.")
 
     async def activate(self, token: str) -> MessageResponse:
@@ -82,9 +83,10 @@ class AuthService:
 
         activation_token = self._create_activation_token(user)
         self._session.add(activation_token)
-        await self._session.commit()
+        await self._session.flush()
 
-        self._email_service.send_activation_email(email, activation_token.token)
+        await self._send_activation_email(email, activation_token.token)
+        await self._session.commit()
         return MessageResponse(message="Activation email has been sent.")
 
     async def _ensure_email_is_available(self, email: str) -> None:
@@ -136,6 +138,16 @@ class AuthService:
             expires_at=datetime.now(UTC)
             + timedelta(hours=self._settings.activation_token_ttl_hours),
         )
+
+    async def _send_activation_email(self, email: str, token: str) -> None:
+        try:
+            self._email_service.send_activation_email(email, token)
+        except EmailDeliveryError as exc:
+            await self._session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Activation email could not be sent. Please try again later.",
+            ) from exc
 
 
 def normalize_email(email: str) -> str:
