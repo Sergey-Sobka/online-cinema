@@ -22,6 +22,7 @@ dependencies = [
     "email-validator>=2.2.0,<3.0.0",
     "black (>=26.5.1,<27.0.0)",
     "aiosqlite (>=0.22.1,<0.23.0)",
+    "greenlet (>=3.5.3,<4.0.0)",
 ]
 
 [tool.poetry]
