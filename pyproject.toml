@@ -20,7 +20,6 @@ dependencies = [
     "stripe>=11.4.1,<12.0.0",
     "python-multipart>=0.0.20,<0.0.21",
     "email-validator>=2.2.0,<3.0.0",
-    "black (>=26.5.1,<27.0.0)",
     "aiosqlite (>=0.22.1,<0.23.0)",
     "greenlet (>=3.5.3,<4.0.0)",
     "bcrypt (<5)",
@@ -39,6 +38,7 @@ dev = [
     "coverage>=7.6.10,<8.0.0",
     "aiosqlite (>=0.22.1,<0.23.0)",
     "celery-types (>=0.26.0,<0.27.0)",
+    "black (>=26.5.1,<27.0.0)",
 ]
 
 [build-system]
