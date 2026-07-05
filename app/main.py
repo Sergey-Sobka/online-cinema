@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 
+from app.api.auth import router as auth_router
 from app.api.health import router as health_router
 from app.core.config import get_settings
+from app.core.exceptions import register_exception_handlers
 
 settings = get_settings()
 
@@ -11,7 +13,9 @@ app = FastAPI(
     version="0.1.0",
 )
 
+register_exception_handlers(app)
 app.include_router(health_router)
+app.include_router(auth_router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/")

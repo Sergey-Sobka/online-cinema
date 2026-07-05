@@ -7,7 +7,7 @@
 - [ ] Tests added or updated
 - [ ] Swagger/OpenAPI docs updated for endpoint changes
 - [ ] README/docs updated if setup or workflow changed
-- [ ] Branch rebased on latest `main`
+- [ ] Branch rebased on latest `develop`
 
 ## How To Test
 

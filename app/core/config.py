@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,7 +20,11 @@ class Settings(BaseSettings):
 
     smtp_host: str = "localhost"
     smtp_port: int = 1025
+    smtp_username: str | None = None
+    smtp_password: str | None = None
     email_from: str = "no-reply@online-cinema.local"
+    activation_url_base: HttpUrl | None = None
+    activation_token_ttl_hours: int = 24
 
     minio_root_user: str = "minioadmin"
     minio_root_password: str = "minioadmin"
