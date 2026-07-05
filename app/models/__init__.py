@@ -7,6 +7,8 @@ from app.models.user import (
     UserProfile,
 )
 
+from app.models.payments import PaymentStatus, Payment, PaymentItems
+from app.models.test_models import Order, OrderItem, OrderStatus
 __all__ = [
     "ActivationToken",
     "GenderEnum",
@@ -14,4 +16,12 @@ __all__ = [
     "UserGroup",
     "UserGroupEnum",
     "UserProfile",
+
+    "PaymentStatus",
+    "Payment",
+    "PaymentItems",
+
+    "Order",
+    "OrderItem",
+    "OrderStatus",
 ]
