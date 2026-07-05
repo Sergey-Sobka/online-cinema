@@ -327,7 +327,7 @@ version = "0.26.0"
 description = "Type stubs for Celery and its related packages"
 optional = false
 python-versions = "<4,>=3.10"
-groups = ["main"]
+groups = ["dev"]
 files = [
     {file = "celery_types-0.26.0-py3-none-any.whl", hash = "sha256:eb9da76f461786091970df466ec647d9a27956399852542cb6cab9309970f950"},
     {file = "celery_types-0.26.0.tar.gz", hash = "sha256:fa318136fdad83f83f1531deecd9fe664b5dfffff29f3c31e9120a46b8e3908f"},
@@ -2635,4 +2635,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "c3edd62f195c35c42dbd856d93f2cb51c7524203d16a46be66828d5e1d64f32b"
+content-hash = "213ae922ae05011680ea51ad8363d2463e9033908281f3332e39b193456fa628"
