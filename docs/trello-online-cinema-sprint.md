@@ -45,8 +45,10 @@ Replace placeholders with real Trello members:
 - Branch format: `feature/<domain-short-name>`, `fix/<short-name>`, or `chore/<short-name>`.
 - Every PR needs at least 2 approvals before merge.
 - Every custom endpoint must have tests.
-- Rebase feature branches on the latest main branch before final review if main changed.
-- No direct commits to `main`.
+- Open feature PRs into `develop`.
+- Rebase feature branches on the latest `develop` before final review if `develop` changed.
+- Merge `develop` into `main` only after the integrated version is stable.
+- No direct commits to `main` or `develop`.
 - Swagger/OpenAPI docs must be updated with every endpoint card.
 
 ## Day 1 - 2026-07-03: Foundation
@@ -95,7 +97,7 @@ Configure teamwork rules for safe collaboration.
 Checklist:
 - Add PR template.
 - Add issue/task template if useful.
-- Add branch protection for `main`.
+- Add branch protection for `develop` and `main`.
 - Require at least 2 approvals before merge.
 - Require CI checks before merge.
 - Add labels matching Trello domains.
@@ -578,7 +580,7 @@ Description:
 Stabilize the project before final submission/demo.
 
 Checklist:
-- Pull latest `main`.
+- Pull latest `develop`.
 - Rebase active branches if needed.
 - Run Docker compose from a clean clone/setup.
 - Run migrations from scratch.
@@ -651,4 +653,3 @@ Create the following cards first in `To Do`:
 5. Movie domain models and migrations
 
 After Card 1 and Card 3 are merged, unblock the feature cards for Auth, Movies, Cart, Orders, and Payments.
-

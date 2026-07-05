@@ -75,8 +75,10 @@ make typecheck
   - `feature/stripe-payments`
 - Open a pull request for every task.
 - Require at least 2 approvals before merging.
-- Do not push directly to `main`.
-- Rebase your feature branch if `main` changed before your PR is merged.
+- Open feature pull requests into `develop`.
+- Merge `develop` into `main` only after the integrated version is stable.
+- Do not push directly to `main` or `develop`.
+- Rebase your feature branch if `develop` changed before your PR is merged.
 
 See `docs/github-start-checklist.md` for the initial GitHub setup.
 
