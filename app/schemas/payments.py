@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from app.models.payments import PaymentStatus
 
+
 class PaymentCreateSchema(BaseModel):
     order_id: int
 
@@ -18,6 +19,7 @@ class PaymentCreateSchema(BaseModel):
 #     status: PaymentStatus
 #     external_payment_id: str
 #     client_secret: str
+
 
 class PaymentItemReadSchema(BaseModel):
     order_item_id: int

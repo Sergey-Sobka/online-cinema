@@ -13,8 +13,9 @@ def get_email_service() -> EmailService:
     settings = get_settings()
     return EmailService(settings=settings)
 
+
 def get_payment_service(
     session: Annotated[AsyncSession, Depends(get_db_session)],
-    email_service = Depends(get_email_service)
+    email_service=Depends(get_email_service),
 ) -> PaymentService:
     return PaymentService(session, get_settings(), email_service)

@@ -37,8 +37,12 @@ class Payment(Base):
         nullable=False,
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    external_payment_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    payment_items: Mapped[List["PaymentItems"]] = relationship(back_populates="payment", cascade="all, delete-orphan")
+    external_payment_id: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )
+    payment_items: Mapped[List["PaymentItems"]] = relationship(
+        back_populates="payment", cascade="all, delete-orphan"
+    )
 
 
 class PaymentItems(Base):
