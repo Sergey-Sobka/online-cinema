@@ -80,7 +80,7 @@ class Movie(Base):
     __tablename__ = "movies"
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     uuid: Mapped[PyUUID] = mapped_column(UUID(as_uuid=True), default=uuid4, unique=True)
-    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
     year: Mapped[int] = mapped_column(nullable=False)
     time: Mapped[int] = mapped_column(nullable=False)
     imdb: Mapped[float] = mapped_column(nullable=False)
