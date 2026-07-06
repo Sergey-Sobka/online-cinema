@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.auth import router as auth_router
+from app.api.cart import router as cart_router
 from app.api.health import router as health_router
 from app.api.payments import router as payments_router
 from app.core.config import get_settings
@@ -18,6 +19,7 @@ register_exception_handlers(app)
 app.include_router(health_router)
 app.include_router(payments_router, prefix=settings.api_v1_prefix)
 app.include_router(auth_router, prefix=settings.api_v1_prefix)
+app.include_router(cart_router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/")
