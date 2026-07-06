@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Any, Dict
+from typing import Any
 
 import stripe
 from fastapi import BackgroundTasks, HTTPException
@@ -81,7 +81,7 @@ class PaymentService:
 
     async def handle_webhook(
         self, payload: bytes, sig_header: str, background_tasks: BackgroundTasks
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         try:
             event = stripe.Webhook.construct_event(
                 payload, sig_header, self._settings.stripe_webhook_secret
@@ -143,7 +143,7 @@ class PaymentService:
 
         return {"status": "success"}
 
-    async def get_history(self, current_user: User, filters: Dict[str, Any]) -> Any:
+    async def get_history(self, current_user: User, filters: dict[str, Any]) -> Any:
         query = (
             select(Payment)
             .options(selectinload(Payment.payment_items))
