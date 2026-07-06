@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import UUID as PyUUID
 from uuid import uuid4
 
@@ -6,6 +7,9 @@ from sqlalchemy import UUID, ForeignKey, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.cart import CartItem
 
 
 class MovieGenre(Base):
@@ -104,6 +108,7 @@ class Movie(Base):
     stars: Mapped[list["Star"]] = relationship(
         secondary="movie_stars", back_populates="movies"
     )
+    cart_items: Mapped[list["CartItem"]] = relationship(back_populates="movie")
 
     __table_args__ = (
         UniqueConstraint("name", "year", "time", name="uq_movie_name_year_time"),

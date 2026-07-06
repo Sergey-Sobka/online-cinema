@@ -1,10 +1,14 @@
 import enum
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text, false, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.cart import Cart
 
 
 class UserGroupEnum(str, enum.Enum):
@@ -62,6 +66,9 @@ class User(Base):
     )
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
+    )
+    cart: Mapped["Cart | None"] = relationship(
+        back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
 
 
