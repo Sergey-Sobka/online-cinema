@@ -23,9 +23,7 @@ class Cart(Base):
 
 class CartItem(Base):
     __tablename__ = "cart_items"
-    __table_args__ = (
-        UniqueConstraint("cart_id", "movie_id", name="uq_cart_movie"),
-    )
+    __table_args__ = (UniqueConstraint("cart_id", "movie_id", name="uq_cart_movie"),)
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     cart_id: Mapped[int] = mapped_column(ForeignKey("carts.id", ondelete="CASCADE"))
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id", ondelete="CASCADE"))
