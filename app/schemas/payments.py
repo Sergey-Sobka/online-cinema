@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+
 from app.models.payments import PaymentStatus
 
 
@@ -35,8 +35,8 @@ class PaymentReadSchema(BaseModel):
     order_id: int
     amount: Decimal
     status: PaymentStatus
-    external_payment_id: Optional[str] = None
-    created_at: Optional[datetime] = None
+    external_payment_id: str | None = None
+    created_at: datetime | None = None
     payment_items: list[PaymentItemReadSchema] = []
 
     model_config = ConfigDict(from_attributes=True)

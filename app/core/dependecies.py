@@ -3,9 +3,9 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.db.session import get_db_session
 from app.services.email import EmailService
-from app.core.config import get_settings
 from app.services.payments import PaymentService
 
 

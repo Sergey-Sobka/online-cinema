@@ -1,3 +1,5 @@
+from app.models.payments import Payment, PaymentItems, PaymentStatus
+from app.models.test_models import Order, OrderItem, OrderStatus
 from app.models.user import (
     ActivationToken,
     GenderEnum,
@@ -6,8 +8,6 @@ from app.models.user import (
     UserGroupEnum,
     UserProfile,
 )
-from app.models.payments import Payment, PaymentItems, PaymentStatus
-from app.models.test_models import Order, OrderItem, OrderStatus
 
 __all__ = [
     "ActivationToken",

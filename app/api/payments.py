@@ -1,12 +1,14 @@
 import os
-from typing import Annotated, Optional
 from datetime import datetime
+from typing import Annotated
 
 import stripe
-from fastapi import APIRouter, Depends, Query, Request, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
+
+from app.core.dependecies import get_payment_service
 from app.db.session import get_db_session
 from app.models import User, UserGroup, UserGroupEnum
 from app.schemas.payments import (
@@ -15,7 +17,6 @@ from app.schemas.payments import (
     PaymentReadSchema,
 )
 from app.services.payments import PaymentService
-from app.core.dependecies import get_payment_service
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
@@ -77,10 +78,10 @@ async def stripe_webhook(
 async def get_payment_history(
     service: Annotated[PaymentService, Depends(get_payment_service)],
     current_user: User = Depends(get_mock_current_user),
-    user_id: Optional[int] = None,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
-    status: Optional[str] = Query(
+    user_id: int | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    status: str | None = Query(
         None, description="successful, canceled, or refunded"
     ),
 ):

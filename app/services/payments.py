@@ -1,21 +1,21 @@
-from fastapi import HTTPException, BackgroundTasks
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-from sqlalchemy.ext.asyncio import AsyncSession
 import stripe
+from fastapi import BackgroundTasks, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from stripe import SignatureVerificationError
 
+from app.core.config import Settings
 from app.models import (
-    Payment,
     Order,
-    User,
+    OrderStatus,
+    Payment,
     PaymentItems,
     PaymentStatus,
-    OrderStatus,
+    User,
     UserGroupEnum,
 )
 from app.services.email import EmailService
-from app.core.config import Settings
 
 
 class PaymentService:
@@ -83,8 +83,8 @@ class PaymentService:
             event = stripe.Webhook.construct_event(
                 payload, sig_header, self._settings.stripe_webhook_secret
             )
-        except (ValueError, SignatureVerificationError):
-            raise HTTPException(status_code=400, detail="Invalid signature")
+        except (ValueError, SignatureVerificationError) as err:
+            raise HTTPException(status_code=400, detail="Invalid signature") from err
 
         event_type = event["type"]
         data_object = event["data"]["object"]
