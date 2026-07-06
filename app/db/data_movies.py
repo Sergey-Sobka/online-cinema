@@ -43,7 +43,7 @@ async def seed_data() -> None:
             meta_score=74.0,
             gross=292576195.0,
             description="A thief who steals corporate "
-                        "secrets through the use of dream-sharing technology.",
+            "secrets through the use of dream-sharing technology.",
             price=Decimal("14.99"),
             certification_id=cert_pg13.id,
             genres=[action, sci_fi, thriller],
@@ -61,7 +61,7 @@ async def seed_data() -> None:
             meta_score=73.0,
             gross=171479902.0,
             description="When a beautiful stranger "
-                        "leads computer hacker Neo to a forbidding underworld...",
+            "leads computer hacker Neo to a forbidding underworld...",
             price=Decimal("9.99"),
             certification_id=cert_r.id,
             genres=[action, sci_fi],
@@ -79,7 +79,7 @@ async def seed_data() -> None:
             meta_score=84.0,
             gross=534858444.0,
             description="When the menace known as "
-                        "the Joker wreaks havoc and chaos on the people of Gotham...",
+            "the Joker wreaks havoc and chaos on the people of Gotham...",
             price=Decimal("19.99"),
             certification_id=cert_pg13.id,
             genres=[action, drama, thriller],
