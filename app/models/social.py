@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy import CheckConstraint, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.movie import Base
+from app.db.base import Base
 
 
 class FavoriteMovie(Base):
