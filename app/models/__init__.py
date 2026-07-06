@@ -1,3 +1,4 @@
+from app.models.cart import Cart, CartItem
 from app.models.movie import Certification, Director, Genre, Movie, Star
 from app.models.payments import Payment, PaymentItems, PaymentStatus
 from app.models.social import FavoriteMovie, MovieComment, MovieLike, MovieRating
@@ -37,4 +38,6 @@ __all__ = [
     "UserGroup",
     "UserGroupEnum",
     "UserProfile",
+    "Cart",
+    "CartItem",
 ]
