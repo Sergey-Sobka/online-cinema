@@ -1,6 +1,8 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
@@ -63,6 +65,33 @@ async def login(
     service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> TokenPairResponse:
     return await service.login(data)
+
+
+@router.post(
+    "/token",
+    response_model=TokenPairResponse,
+    summary="Swagger OAuth2 login",
+    description=(
+        "OAuth2 password-flow endpoint used by Swagger Authorize. "
+        "Use the email address as username."
+    ),
+)
+async def token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    service: Annotated[AuthService, Depends(get_auth_service)],
+) -> TokenPairResponse:
+    try:
+        login_data = LoginRequest(
+            email=form_data.username,
+            password=form_data.password,
+        )
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=exc.errors(),
+        ) from exc
+
+    return await service.login(login_data)
 
 
 @router.post("/refresh", response_model=TokenPairResponse)
