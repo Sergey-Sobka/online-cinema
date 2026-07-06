@@ -1,9 +1,8 @@
 from decimal import Decimal
-from typing import Any
+from typing import Any, Dict
 
 import stripe
 from fastapi import BackgroundTasks, HTTPException
-from mypy.checkexpr import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -25,7 +24,7 @@ from app.services.email import EmailService
 class PaymentService:
     def __init__(
         self, session: AsyncSession, settings: Settings, notificator: EmailService
-    ):
+    ) -> None:
         self._session = session
         self._settings = settings
         self._notificator = notificator
@@ -82,7 +81,7 @@ class PaymentService:
 
     async def handle_webhook(
         self, payload: bytes, sig_header: str, background_tasks: BackgroundTasks
-    ) -> dict:
+    ) -> Dict[str, Any]:
         try:
             event = stripe.Webhook.construct_event(
                 payload, sig_header, self._settings.stripe_webhook_secret
@@ -144,7 +143,7 @@ class PaymentService:
 
         return {"status": "success"}
 
-    async def get_history(self, current_user, filters: dict) -> Sequence[Payment]:
+    async def get_history(self, current_user: User, filters: Dict[str, Any]) -> Any:
         query = (
             select(Payment)
             .options(selectinload(Payment.payment_items))
@@ -161,7 +160,7 @@ class PaymentService:
         result = await self._session.execute(query)
         return result.scalars().all()
 
-    async def refund(self, payment_id: int, user: User):
+    async def refund(self, payment_id: int, user: User) -> str | None:
         if user.group.name != UserGroupEnum.ADMIN:
             raise HTTPException(status_code=403, detail="Forbidden")
         payment = await self._session.scalar(
@@ -169,6 +168,5 @@ class PaymentService:
         )
         if not payment or payment.status != PaymentStatus.SUCCESSFUL:
             raise HTTPException(status_code=400, detail="Invalid payment state")
-
         refund = stripe.Refund.create(payment_intent=payment.external_payment_id)
         return refund.id

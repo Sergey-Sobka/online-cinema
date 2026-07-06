@@ -23,7 +23,7 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
-async def get_mock_current_user(db: AsyncSession = Depends(get_db_session)) -> User: # noqa: B008
+async def get_mock_current_user(db: AsyncSession = Depends(get_db_session)) -> User:  # noqa: B008
     user = await db.scalar(select(User).options(selectinload(User.group)).limit(1))
 
     if not user:
@@ -56,7 +56,7 @@ async def create_payment_intent(
     payload: PaymentCreateSchema,
     service: Annotated[PaymentService, Depends(get_payment_service)],
     current_user: User = Depends(get_mock_current_user),
-):
+) -> dict[str, str]:
     payment, client_secret = await service.create_payment_intent(
         payload.order_id, current_user.id
     )
@@ -68,7 +68,7 @@ async def stripe_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     service: Annotated[PaymentService, Depends(get_payment_service)],
-):
+) -> dict[str, str] | None:
     payload = await request.body()
     sig_header = request.headers.get("Stripe-Signature")
     return await service.handle_webhook(payload, sig_header, background_tasks)
@@ -81,10 +81,8 @@ async def get_payment_history(
     user_id: int | None = None,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
-    status: str | None = Query(
-        None, description="successful, canceled, or refunded"
-    ),
-):
+    status: str | None = Query(None, description="successful, canceled, or refunded"),
+) -> list[PaymentReadSchema]:
     filters = {
         "user_id": user_id,
         "start_date": start_date,
@@ -99,6 +97,6 @@ async def refund_payment(
     payment_id: int,
     service: Annotated[PaymentService, Depends(get_payment_service)],
     current_user: User = Depends(get_mock_current_user),
-):
+) -> dict[str, str] | None:
     refund_id = await service.refund(payment_id, current_user)
     return {"status": "success", "refund_id": refund_id}
