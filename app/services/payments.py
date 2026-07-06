@@ -68,7 +68,7 @@ class PaymentService:
         intent = stripe.PaymentIntent.create(
             amount=int(calculated_total * 100),
             currency="usd",
-            metadata={"order_id": order.id, "payment_id": new_payment.id},
+            metadata={"order_id": str(order.id), "payment_id": str(new_payment.id)},
             automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
         )
         new_payment.external_payment_id = intent.id
@@ -83,7 +83,7 @@ class PaymentService:
         self, payload: bytes, sig_header: str, background_tasks: BackgroundTasks
     ) -> dict[str, Any]:
         try:
-            event = stripe.Webhook.construct_event(
+            event = stripe.Webhook.construct_event(  # type: ignore[no-untyped-call]
                 payload, sig_header, self._settings.stripe_webhook_secret
             )
         except (ValueError, SignatureVerificationError) as err:
@@ -141,7 +141,9 @@ class PaymentService:
 
         return {"status": "success"}
 
-    async def get_history(self, current_user: User, filters: dict[str, Any]) -> Any:
+    async def get_history(
+        self, current_user: User, filters: dict[str, Any]
+    ) -> list[Payment]:
         query = (
             select(Payment)
             .options(selectinload(Payment.payment_items))
@@ -166,7 +168,7 @@ class PaymentService:
                 end_date = end_date.replace(tzinfo=None)
             query = query.where(Payment.created_at <= end_date)
         result = await self._session.execute(query)
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     async def refund(self, payment_id: int, user: User) -> str | None:
         if user.group.name != UserGroupEnum.ADMIN:
@@ -176,5 +178,7 @@ class PaymentService:
         )
         if not payment or payment.status != PaymentStatus.SUCCESSFUL:
             raise HTTPException(status_code=400, detail="Invalid payment state")
+        if not payment.external_payment_id:
+            raise HTTPException(status_code=400, detail="Payment ID not found")
         refund = stripe.Refund.create(payment_intent=payment.external_payment_id)
         return refund.id

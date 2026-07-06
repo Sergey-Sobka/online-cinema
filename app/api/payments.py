@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 
 from app.api.dependencies import get_current_user
 from app.core.dependecies import get_payment_service
-from app.models import PaymentStatus, User
+from app.models import PaymentStatus, User, Payment
 from app.schemas.payments import (
     PaymentCreateSchema,
     PaymentInitResponseSchema,
@@ -39,7 +39,7 @@ async def stripe_webhook(
     service: Annotated[PaymentService, Depends(get_payment_service)],
 ) -> dict[str, str] | None:
     payload = await request.body()
-    sig_header = request.headers.get("Stripe-Signature")
+    sig_header = request.headers.get("Stripe-Signature") or ""
     return await service.handle_webhook(payload, sig_header, background_tasks)
 
 
@@ -53,7 +53,7 @@ async def get_payment_history(
     status: Annotated[
         PaymentStatus | None, Query(description="successful, canceled, or refunded")
     ] = None,
-) -> list[PaymentReadSchema]:
+) -> list[Payment]:
     filters = {
         "user_id": user_id,
         "start_date": start_date,
@@ -70,4 +70,6 @@ async def refund_payment(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict[str, str] | None:
     refund_id = await service.refund(payment_id, current_user)
-    return {"status": "success", "refund_id": refund_id}
+    if refund_id:
+        return {"status": "success", "refund_id": refund_id}
+    return {"status": "error"}
