@@ -4,9 +4,10 @@ from typing import Annotated
 
 import stripe
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
+
 from app.api.dependencies import get_current_user
 from app.core.dependecies import get_payment_service
-from app.models import User, PaymentStatus
+from app.models import PaymentStatus, User
 from app.schemas.payments import (
     PaymentCreateSchema,
     PaymentInitResponseSchema,

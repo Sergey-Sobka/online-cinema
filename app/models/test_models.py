@@ -1,10 +1,14 @@
 import enum
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.payments import Payment, PaymentItems
 
 
 class OrderStatus(enum.Enum):
