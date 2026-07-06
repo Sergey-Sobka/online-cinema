@@ -5,15 +5,6 @@ from sqlalchemy import ForeignKey, String, Numeric, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
-# class User(Base):
-#     __tablename__ = "users"
-#
-#     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-#     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-#     role: Mapped[str] = mapped_column(String(50), default="user", nullable=False)  # user / admin / moderator
-#     orders: Mapped[List["Order"]] = relationship(back_populates="user")
-#     payments: Mapped[List["Payment"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-
 
 class OrderStatus(enum.Enum):
     CANCELED = "canceled"
