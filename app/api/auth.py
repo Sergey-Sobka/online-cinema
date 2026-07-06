@@ -7,12 +7,15 @@ from app.api.dependencies import get_current_user
 from app.db.session import get_db_session
 from app.models import User
 from app.schemas.auth import (
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
     MessageResponse,
     RefreshTokenRequest,
     RegisterRequest,
     ResendActivationRequest,
+    ResetPasswordRequest,
     TokenPairResponse,
 )
 from app.services.auth import AuthService, build_auth_service
@@ -83,3 +86,28 @@ async def me(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict[str, str]:
     return {"email": current_user.email}
+
+
+@router.post("/password/change", response_model=MessageResponse)
+async def change_password(
+    data: ChangePasswordRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    service: Annotated[AuthService, Depends(get_auth_service)],
+) -> MessageResponse:
+    return await service.change_password(current_user, data)
+
+
+@router.post("/password/forgot", response_model=MessageResponse)
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    service: Annotated[AuthService, Depends(get_auth_service)],
+) -> MessageResponse:
+    return await service.forgot_password(data)
+
+
+@router.post("/password/reset", response_model=MessageResponse)
+async def reset_password(
+    data: ResetPasswordRequest,
+    service: Annotated[AuthService, Depends(get_auth_service)],
+) -> MessageResponse:
+    return await service.reset_password(data)
