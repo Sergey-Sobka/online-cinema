@@ -1,4 +1,3 @@
-import os
 from functools import lru_cache
 
 from pydantic import Field, HttpUrl
@@ -32,8 +31,8 @@ class Settings(BaseSettings):
     minio_endpoint: str = "http://localhost:9000"
     minio_bucket: str = "online-cinema"
 
-    stripe_secret_key: str = os.getenv("STRIPE_SECRET_KEY")
-    stripe_webhook_secret: str = os.getenv("STRIPE_WEBHOOK_SECRET")
+    stripe_secret_key: str = "sk_test..."
+    stripe_webhook_secret: str = "whsec_..."
 
     database_url: str = Field(
         default="postgresql+asyncpg://online_cinema:online_cinema@localhost:5432/online_cinema"

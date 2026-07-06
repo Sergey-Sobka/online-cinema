@@ -23,7 +23,7 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
-async def get_mock_current_user(db: AsyncSession = Depends(get_db_session)) -> User:
+async def get_mock_current_user(db: AsyncSession = Depends(get_db_session)) -> User: # noqa: B008
     user = await db.scalar(select(User).options(selectinload(User.group)).limit(1))
 
     if not user:

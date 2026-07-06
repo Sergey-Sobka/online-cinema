@@ -1,5 +1,9 @@
+from decimal import Decimal
+from typing import Any
+
 import stripe
 from fastapi import BackgroundTasks, HTTPException
+from mypy.checkexpr import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -27,7 +31,7 @@ class PaymentService:
         self._notificator = notificator
         stripe.api_key = self._settings.stripe_secret_key
 
-    async def create_payment_intent(self, order_id: int, user_id: int):
+    async def create_payment_intent(self, order_id: int, user_id: int) -> Any:
         order = await self._session.scalar(
             select(Order)
             .where(Order.id == order_id)
@@ -47,7 +51,7 @@ class PaymentService:
         new_payment = Payment(
             user_id=user_id,
             order_id=order.id,
-            amount=calculated_total,
+            amount=Decimal(calculated_total),
             status=PaymentStatus.PENDING,
         )
         self._session.add(new_payment)
@@ -78,7 +82,7 @@ class PaymentService:
 
     async def handle_webhook(
         self, payload: bytes, sig_header: str, background_tasks: BackgroundTasks
-    ):
+    ) -> dict:
         try:
             event = stripe.Webhook.construct_event(
                 payload, sig_header, self._settings.stripe_webhook_secret
@@ -104,9 +108,13 @@ class PaymentService:
         order = await self._session.scalar(
             select(Order).where(Order.id == payment.order_id)
         )
+        if not order:
+            return {"status": "ignored", "reason": "order not found"}
         user = await self._session.scalar(
             select(User).where(User.id == payment.user_id)
         )
+        if not user:
+            return {"status": "ignored", "reason": "user not found"}
         if (
             event_type == "payment_intent.succeeded"
             and payment.status != PaymentStatus.SUCCESSFUL
@@ -136,7 +144,7 @@ class PaymentService:
 
         return {"status": "success"}
 
-    async def get_history(self, current_user, filters: dict):
+    async def get_history(self, current_user, filters: dict) -> Sequence[Payment]:
         query = (
             select(Payment)
             .options(selectinload(Payment.payment_items))
@@ -154,8 +162,8 @@ class PaymentService:
         return result.scalars().all()
 
     async def refund(self, payment_id: int, user: User):
-        # if user.group.name != UserGroupEnum.ADMIN:
-        #     raise HTTPException(status_code=403, detail="Forbidden")
+        if user.group.name != UserGroupEnum.ADMIN:
+            raise HTTPException(status_code=403, detail="Forbidden")
         payment = await self._session.scalar(
             select(Payment).where(Payment.id == payment_id)
         )

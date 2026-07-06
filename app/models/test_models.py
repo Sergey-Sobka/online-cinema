@@ -5,6 +5,7 @@ from sqlalchemy import Enum, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.models.payments import Payment, PaymentItems
 
 
 class OrderStatus(enum.Enum):
