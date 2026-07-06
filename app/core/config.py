@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     email_from: str = "no-reply@online-cinema.local"
     activation_url_base: HttpUrl | None = None
     activation_token_ttl_hours: int = 24
+    password_reset_url_base: HttpUrl | None = None
+    password_reset_token_ttl_hours: int = 1
 
     minio_root_user: str = "minioadmin"
     minio_root_password: str = "minioadmin"
