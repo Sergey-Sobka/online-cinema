@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     minio_endpoint: str = "http://localhost:9000"
     minio_bucket: str = "online-cinema"
 
-    stripe_secret_key: str = "sk_test_change_me"
-    stripe_webhook_secret: str = "whsec_change_me"
+    stripe_secret_key: str = "sk_test..."
+    stripe_webhook_secret: str = "whsec_..."
 
     database_url: str = Field(
         default="postgresql+asyncpg://online_cinema:online_cinema@localhost:5432/online_cinema"
@@ -45,7 +45,7 @@ class Settings(BaseSettings):
 
     jwt_secret_key: str = "change-me"
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 15
+    access_token_expire_minutes: int = 150
     refresh_token_expire_days: int = 7
 
 
