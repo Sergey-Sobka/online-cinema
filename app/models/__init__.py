@@ -1,6 +1,7 @@
 from app.models.user import (
     ActivationToken,
     GenderEnum,
+    PasswordResetToken,
     RefreshToken,
     User,
     UserGroup,
@@ -11,6 +12,7 @@ from app.models.user import (
 __all__ = [
     "ActivationToken",
     "GenderEnum",
+    "PasswordResetToken",
     "RefreshToken",
     "User",
     "UserGroup",
