@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud, services
 from app.models import User
 from app.schemas.cart import CartItemRead, CartRead
+from models import Cart, CartItem
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/cart", tags=["Cart"])
 async def view_cart(
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
-):
+) -> Cart:
     cart = await crud.cart.get_cart_by_user_id(db, user_id=current_user.id)
     if not cart:
         raise HTTPException(
@@ -28,7 +29,7 @@ async def add_movie_to_cart(
     movie_id: int,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
-):
+) -> CartItem:
     return await services.cart.add_movie_to_cart(
         db=db, user_id=current_user.id, movie_id=movie_id
     )
@@ -39,7 +40,7 @@ async def remove_item_from_cart(
     item_id: int,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
-):
+) -> None:
     cart = await crud.cart.get_cart_by_user_id(db, user_id=current_user.id)
 
     if not cart:
@@ -62,7 +63,7 @@ async def remove_item_from_cart(
 async def clear_cart(
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
-):
+) -> None:
     cart = await crud.cart.get_cart_by_user_id(db, user_id=current_user.id)
     if not cart:
         raise HTTPException(
