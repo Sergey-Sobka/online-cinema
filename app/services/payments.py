@@ -1,4 +1,3 @@
-from decimal import Decimal
 from fastapi import HTTPException, BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -80,12 +79,11 @@ class PaymentService:
     async def handle_webhook(
         self, payload: bytes, sig_header: str, background_tasks: BackgroundTasks
     ):
-        # 1. Верифікація підпису
         try:
             event = stripe.Webhook.construct_event(
                 payload, sig_header, self._settings.stripe_webhook_secret
             )
-        except (ValueError, SignatureVerificationError) as e:
+        except (ValueError, SignatureVerificationError):
             raise HTTPException(status_code=400, detail="Invalid signature")
 
         event_type = event["type"]
