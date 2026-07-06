@@ -7,10 +7,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import Settings, get_settings
-from app.core.security import hash_password, validate_password_complexity
+from app.core.security import (
+    create_access_token,
+    create_refresh_token_value,
+    decode_token,
+    hash_password,
+    validate_password_complexity,
+    verify_password,
+)
 from app.db.session import AsyncSessionLocal
-from app.models import ActivationToken, User, UserGroup, UserGroupEnum
-from app.schemas.auth import MessageResponse, RegisterRequest, ResendActivationRequest
+from app.models import ActivationToken, RefreshToken, User, UserGroup, UserGroupEnum
+from app.schemas.auth import (
+    LoginRequest,
+    LogoutRequest,
+    MessageResponse,
+    RefreshTokenRequest,
+    RegisterRequest,
+    ResendActivationRequest,
+    TokenPairResponse,
+)
 from app.services.email import EmailDeliveryError, EmailService
 
 
@@ -89,6 +104,38 @@ class AuthService:
         await self._session.commit()
         return MessageResponse(message="Activation email has been sent.")
 
+    async def login(self, data: LoginRequest) -> TokenPairResponse:
+        user = await self._authenticate_user(data)
+        refresh_token = self._create_refresh_token(user)
+        self._session.add(refresh_token)
+        await self._session.commit()
+        return self._create_token_pair(user, refresh_token.token)
+
+    async def refresh(self, data: RefreshTokenRequest) -> TokenPairResponse:
+        refresh_token = await self._get_refresh_token(data.refresh_token)
+        if is_expired(refresh_token.expires_at):
+            await self._session.delete(refresh_token)
+            await self._session.commit()
+            raise unauthorized("Refresh token has expired.")
+        if not refresh_token.user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is inactive.",
+            )
+
+        return self._create_token_pair(refresh_token.user, refresh_token.token)
+
+    async def logout(self, data: LogoutRequest) -> MessageResponse:
+        result = await self._session.execute(
+            select(RefreshToken).where(RefreshToken.token == data.refresh_token)
+        )
+        refresh_token = result.scalar_one_or_none()
+        if refresh_token is not None:
+            await self._session.delete(refresh_token)
+            await self._session.commit()
+
+        return MessageResponse(message="Logged out successfully.")
+
     async def _ensure_email_is_available(self, email: str) -> None:
         user = await self._get_user_by_email(email)
         if user is not None:
@@ -131,12 +178,48 @@ class AuthService:
             )
         return activation_token
 
+    async def _authenticate_user(self, data: LoginRequest) -> User:
+        user = await self._get_user_by_email(normalize_email(data.email))
+        if user is None or not verify_password(data.password, user.hashed_password):
+            raise unauthorized("Invalid email or password.")
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is inactive.",
+            )
+        return user
+
+    async def _get_refresh_token(self, token: str) -> RefreshToken:
+        result = await self._session.execute(
+            select(RefreshToken)
+            .options(selectinload(RefreshToken.user))
+            .where(RefreshToken.token == token)
+        )
+        refresh_token = result.scalar_one_or_none()
+        if refresh_token is None:
+            raise unauthorized("Invalid refresh token.")
+        return refresh_token
+
     def _create_activation_token(self, user: User) -> ActivationToken:
         return ActivationToken(
             user=user,
             token=secrets.token_urlsafe(32),
             expires_at=datetime.now(UTC)
             + timedelta(hours=self._settings.activation_token_ttl_hours),
+        )
+
+    def _create_refresh_token(self, user: User) -> RefreshToken:
+        return RefreshToken(
+            user=user,
+            token=create_refresh_token_value(),
+            expires_at=datetime.now(UTC)
+            + timedelta(days=self._settings.refresh_token_expire_days),
+        )
+
+    def _create_token_pair(self, user: User, refresh_token: str) -> TokenPairResponse:
+        return TokenPairResponse(
+            access_token=create_access_token(user.id, user.email, self._settings),
+            refresh_token=refresh_token,
         )
 
     async def _send_activation_email(self, email: str, token: str) -> None:
@@ -168,6 +251,40 @@ def is_expired(expires_at: datetime) -> bool:
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=UTC)
     return expires_at <= datetime.now(UTC)
+
+
+def unauthorized(detail: str) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=detail,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+async def get_current_active_user(
+    token: str,
+    session: AsyncSession,
+    settings: Settings,
+) -> User:
+    try:
+        payload = decode_token(token, settings)
+        token_type = payload.get("type")
+        user_id = int(str(payload.get("sub")))
+    except (TypeError, ValueError) as exc:
+        raise unauthorized("Invalid access token.") from exc
+
+    if token_type != "access":
+        raise unauthorized("Invalid access token.")
+
+    user = await session.get(User, user_id)
+    if user is None:
+        raise unauthorized("Invalid access token.")
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive.",
+        )
+    return user
 
 
 async def cleanup_expired_activation_tokens(
