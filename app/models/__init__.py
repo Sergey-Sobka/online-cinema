@@ -26,3 +26,9 @@ __all__ += [
     "Director",
     "Certification",
 ]
+from app.models.cart import Cart, CartItem  # noqa: E402
+
+__all__ += [
+    "Cart",
+    "CartItem",
+]

@@ -1,11 +1,14 @@
 import enum
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text, false, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.models.cart import Cart
+
+if TYPE_CHECKING:
+    from app.models.cart import Cart
 
 
 class UserGroupEnum(str, enum.Enum):
