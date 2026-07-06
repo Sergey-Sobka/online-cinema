@@ -7,7 +7,7 @@ class CartItemRead(BaseModel):
     id: int
     cart_id: int
     movie: Movie
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 

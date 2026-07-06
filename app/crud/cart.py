@@ -9,9 +9,7 @@ async def get_cart_by_user_id(db: AsyncSession, user_id: int) -> Cart | None:
     query = (
         select(Cart)
         .where(Cart.user_id == user_id)
-        .options(
-            selectinload(Cart.cart_items).selectinload(CartItem.movie)
-        )
+        .options(selectinload(Cart.cart_items).selectinload(CartItem.movie))
     )
     result = await db.execute(query)
     return result.scalar_one_or_none()

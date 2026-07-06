@@ -58,7 +58,7 @@ class AuthService:
             hashed_password=hash_password(data.password),
             is_active=False,
             group=group,
-            cart=Cart()
+            cart=Cart(),
         )
         self._session.add(user)
         await self._session.flush()
