@@ -1,3 +1,5 @@
+from app.models.movie import Certification, Director, Genre, Movie, Star
+from app.models.social import FavoriteMovie, MovieComment, MovieLike, MovieRating
 from app.models.user import (
     ActivationToken,
     GenderEnum,
@@ -16,13 +18,13 @@ __all__ = [
     "UserGroup",
     "UserGroupEnum",
     "UserProfile",
-]
-from app.models.movie import Certification, Director, Genre, Movie, Star
-
-__all__ += [
     "Movie",
     "Genre",
     "Star",
     "Director",
     "Certification",
+    "MovieLike",
+    "MovieComment",
+    "MovieRating",
+    "FavoriteMovie",
 ]
