@@ -1,7 +1,7 @@
 """add cart tables
 
 Revision ID: 202607061330
-Revises: 202607051000
+Revises: b2b9b27fc1a3
 Create Date: 2026-07-06 13:30:00.000000
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "202607061330"
-down_revision: str | None = "202607051000"
+down_revision: str | None = "b2b9b27fc1a3"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
