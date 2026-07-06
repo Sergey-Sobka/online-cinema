@@ -1,12 +1,12 @@
 from api.dependencies import get_current_user
 from db.session import get_db_session
 from fastapi import APIRouter, Depends, HTTPException, status
+from models import Cart, CartItem
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud, services
 from app.models import User
 from app.schemas.cart import CartItemRead, CartRead
-from models import Cart, CartItem
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 
