@@ -10,17 +10,6 @@ class PaymentCreateSchema(BaseModel):
     order_id: int
 
 
-# class PaymentInitResponseSchema(BaseModel):
-#
-#     id: int
-#     user_id: int
-#     order_id: int
-#     amount: Decimal
-#     status: PaymentStatus
-#     external_payment_id: str
-#     client_secret: str
-
-
 class PaymentItemReadSchema(BaseModel):
     order_item_id: int
     price_at_payment: Decimal
@@ -43,5 +32,5 @@ class PaymentReadSchema(BaseModel):
 
 
 class PaymentInitResponseSchema(BaseModel):
-    payment: PaymentReadSchema  # Використовуємо вже існуючу схему читання
+    payment: PaymentReadSchema
     client_secret: str

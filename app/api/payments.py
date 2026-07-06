@@ -4,13 +4,9 @@ from typing import Annotated
 
 import stripe
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
-
+from app.api.dependencies import get_current_user
 from app.core.dependecies import get_payment_service
-from app.db.session import get_db_session
-from app.models import User, UserGroup, UserGroupEnum
+from app.models import User, PaymentStatus
 from app.schemas.payments import (
     PaymentCreateSchema,
     PaymentInitResponseSchema,
@@ -23,39 +19,11 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
-async def get_mock_current_user(db: AsyncSession = Depends(get_db_session)) -> User:  # noqa: B008
-    user = await db.scalar(select(User).options(selectinload(User.group)).limit(1))
-
-    if not user:
-        group = await db.scalar(
-            select(UserGroup).where(UserGroup.name == UserGroupEnum.USER)
-        )
-
-        if not group:
-            group = UserGroup(name=UserGroupEnum.USER)
-            db.add(group)
-            await db.flush()
-
-        user = User(
-            email="admin@example.com",
-            hashed_password="Test@123456789",
-            is_active=True,
-            group_id=int(group.id),
-        )
-        db.add(user)
-        await db.commit()
-
-        user = await db.scalar(
-            select(User).options(selectinload(User.group)).where(User.id == user.id)
-        )
-    return user
-
-
 @router.post("/", response_model=PaymentInitResponseSchema)
 async def create_payment_intent(
     payload: PaymentCreateSchema,
     service: Annotated[PaymentService, Depends(get_payment_service)],
-    current_user: User = Depends(get_mock_current_user),
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict[str, str]:
     payment, client_secret = await service.create_payment_intent(
         payload.order_id, current_user.id
@@ -77,11 +45,13 @@ async def stripe_webhook(
 @router.get("/history", response_model=list[PaymentReadSchema])
 async def get_payment_history(
     service: Annotated[PaymentService, Depends(get_payment_service)],
-    current_user: User = Depends(get_mock_current_user),
+    current_user: Annotated[User, Depends(get_current_user)],
     user_id: int | None = None,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
-    status: str | None = Query(None, description="successful, canceled, or refunded"),
+    status: Annotated[
+        PaymentStatus | None, Query(description="successful, canceled, or refunded")
+    ] = None,
 ) -> list[PaymentReadSchema]:
     filters = {
         "user_id": user_id,
@@ -96,7 +66,7 @@ async def get_payment_history(
 async def refund_payment(
     payment_id: int,
     service: Annotated[PaymentService, Depends(get_payment_service)],
-    current_user: User = Depends(get_mock_current_user),
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict[str, str] | None:
     refund_id = await service.refund(payment_id, current_user)
     return {"status": "success", "refund_id": refund_id}

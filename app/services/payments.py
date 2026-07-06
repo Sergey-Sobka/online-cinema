@@ -98,9 +98,7 @@ class PaymentService:
         )
 
         payment = await self._session.scalar(
-            select(Payment)
-            .where(Payment.external_payment_id == payment_intent_id)
-            .with_for_update()
+            select(Payment).where(Payment.external_payment_id == payment_intent_id)
         )
         if not payment:
             return {"status": "ignored", "reason": "payment not found"}
@@ -156,7 +154,17 @@ class PaymentService:
                 query = query.where(Payment.user_id == filters["user_id"])
             if filters.get("status"):
                 query = query.where(Payment.status == filters["status"])
+        if filters.get("start_date"):
+            start_date = filters["start_date"]
+            if start_date.tzinfo is not None:
+                start_date = start_date.replace(tzinfo=None)
+            query = query.where(Payment.created_at >= start_date)
 
+        if filters.get("end_date"):
+            end_date = filters["end_date"]
+            if end_date.tzinfo is not None:
+                end_date = end_date.replace(tzinfo=None)
+            query = query.where(Payment.created_at <= end_date)
         result = await self._session.execute(query)
         return result.scalars().all()
 
