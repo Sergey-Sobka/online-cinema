@@ -275,8 +275,10 @@ async def get_current_active_user(
 
     if token_type != "access":
         raise unauthorized("Invalid access token.")
-
-    user = await session.get(User, user_id)
+    result = await session.execute(
+        select(User).options(selectinload(User.group)).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
     if user is None:
         raise unauthorized("Invalid access token.")
     if not user.is_active:

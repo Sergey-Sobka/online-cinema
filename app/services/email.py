@@ -43,3 +43,24 @@ class EmailService:
             base_url = str(self._settings.activation_url_base).rstrip("/")
             return f"{base_url}?token={token}"
         return f"/api/v1/auth/activate?token={token}"
+
+    def send_payment_status(self, recipient: str, text: str) -> None:
+        message = EmailMessage()
+        message["Subject"] = "Payment Status Notification"
+        message["From"] = self._settings.email_from
+        message["To"] = recipient
+        message.set_content("Dear client.\n\n" f"{text}.\n\n" "Thank you")
+
+        try:
+            with smtplib.SMTP(
+                host=self._settings.smtp_host,
+                port=self._settings.smtp_port,
+            ) as smtp:
+                if self._settings.smtp_username and self._settings.smtp_password:
+                    smtp.login(
+                        user=self._settings.smtp_username,
+                        password=self._settings.smtp_password,
+                    )
+                smtp.send_message(message)
+        except (OSError, smtplib.SMTPException) as exc:
+            raise EmailDeliveryError("Payment status could not be sent.") from exc
