@@ -1,3 +1,5 @@
+from app.models.payments import Payment, PaymentItems, PaymentStatus
+from app.models.test_models import Order, OrderItem, OrderStatus
 from app.models.user import (
     ActivationToken,
     GenderEnum,
@@ -16,6 +18,12 @@ __all__ = [
     "UserGroup",
     "UserGroupEnum",
     "UserProfile",
+    "PaymentStatus",
+    "Payment",
+    "PaymentItems",
+    "Order",
+    "OrderItem",
+    "OrderStatus",
 ]
 from app.models.movie import Certification, Director, Genre, Movie, Star
 
