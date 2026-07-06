@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.models.test_models import Order, OrderItem
+    from app.models.orders import Order, OrderItem
 
 
 class PaymentStatus(str, enum.Enum):
