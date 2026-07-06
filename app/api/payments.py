@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 
 from app.api.dependencies import get_current_user
 from app.core.dependecies import get_payment_service
-from app.models import PaymentStatus, User, Payment
+from app.models import Payment, PaymentStatus, User
 from app.schemas.payments import (
     PaymentCreateSchema,
     PaymentInitResponseSchema,
