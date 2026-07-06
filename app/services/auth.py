@@ -16,7 +16,14 @@ from app.core.security import (
     verify_password,
 )
 from app.db.session import AsyncSessionLocal
-from app.models import ActivationToken, RefreshToken, User, UserGroup, UserGroupEnum
+from app.models import (
+    ActivationToken,
+    Cart,
+    RefreshToken,
+    User,
+    UserGroup,
+    UserGroupEnum,
+)
 from app.schemas.auth import (
     LoginRequest,
     LogoutRequest,
@@ -51,6 +58,7 @@ class AuthService:
             hashed_password=hash_password(data.password),
             is_active=False,
             group=group,
+            cart=Cart()
         )
         self._session.add(user)
         await self._session.flush()
