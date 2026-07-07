@@ -1,8 +1,8 @@
 from fastapi import HTTPException, status
-from models import CartItem
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
+from app.models import CartItem
 
 
 async def add_movie_to_cart(db: AsyncSession, user_id: int, movie_id: int) -> CartItem:

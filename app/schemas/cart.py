@@ -1,12 +1,12 @@
 from pydantic import BaseModel, ConfigDict
 
-from app.models import Movie
+from app.schemas.movie import MovieResponse
 
 
 class CartItemRead(BaseModel):
     id: int
     cart_id: int
-    movie: Movie
+    movie: MovieResponse
 
     model_config = ConfigDict(from_attributes=True)
 
