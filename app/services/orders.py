@@ -17,7 +17,7 @@ class OrderService:
         self._session = session
 
     async def place_order(self, current_user: User, movie_ids: list[int]) -> Order:
-        movie_ids = set(movie_ids)
+        movie_ids = list(dict.fromkeys(movie_ids))
         movies = (
             await self._session.scalars(select(Movie).where(Movie.id.in_(movie_ids)))
         ).all()
