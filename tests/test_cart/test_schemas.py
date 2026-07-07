@@ -27,8 +27,11 @@ def valid_movie_data():
         "certification_id": 1,
         "genres": [{"id": 1, "name": "Sci-Fi"}, {"id": 2, "name": "Action"}],
         "directors": [{"id": 1, "name": "Christopher Nolan"}],
-        "stars": [{"id": 1, "name": "Leonardo DiCaprio"}, {"id": 2, "name": "Joseph Gordon-Levitt"}],
-        "certification": {"id": 1, "name": "PG-13"}
+        "stars": [
+            {"id": 1, "name": "Leonardo DiCaprio"},
+            {"id": 2, "name": "Joseph Gordon-Levitt"},
+        ],
+        "certification": {"id": 1, "name": "PG-13"},
     }
 
 
@@ -88,9 +91,7 @@ class TestCartSchemas:
         assert "id" in str(exc_info.value)
 
     def test_cart_read_missing_required_fields(self):
-        incomplete_data = {
-            "id": 1
-        }
+        incomplete_data = {"id": 1}
 
         with pytest.raises(ValidationError) as exc_info:
             CartRead(**incomplete_data)

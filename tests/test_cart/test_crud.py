@@ -49,7 +49,9 @@ class TestCartCRUD:
             db=db_session, cart_id=cart.id, movie_id=movie_id
         )
 
-        fetched_cart = await crud_cart.get_cart_by_user_id(db=db_session, user_id=user_id)
+        fetched_cart = await crud_cart.get_cart_by_user_id(
+            db=db_session, user_id=user_id
+        )
 
         assert fetched_cart is not None
         assert len(fetched_cart.cart_items) == 1
@@ -58,7 +60,9 @@ class TestCartCRUD:
     async def test_get_user_cart_empty(self, db_session: AsyncSession):
         non_existent_user_id = 999
 
-        cart = await crud_cart.get_cart_by_user_id(db=db_session, user_id=non_existent_user_id)
+        cart = await crud_cart.get_cart_by_user_id(
+            db=db_session, user_id=non_existent_user_id
+        )
 
         assert cart is None
 
@@ -70,9 +74,7 @@ class TestCartCRUD:
             db=db_session, cart_id=cart_id, movie_id=movie_id
         )
 
-        result = await crud_cart.delete_item_from_cart(
-            db=db_session, item_id=item.id
-        )
+        result = await crud_cart.delete_item_from_cart(db=db_session, item_id=item.id)
         assert result is None
 
         cart = await crud_cart.get_cart_by_user_id(db=db_session, user_id=cart_id)

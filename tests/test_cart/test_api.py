@@ -25,11 +25,8 @@ def app_with_route(db_session: AsyncSession):
 
 
 class TestCartAPI:
-
     async def test_view_cart_success(
-            self,
-            app_with_route: FastAPI,
-            db_session: AsyncSession
+        self, app_with_route: FastAPI, db_session: AsyncSession
     ):
         cart = Cart(user_id=100)
         db_session.add(cart)
@@ -52,9 +49,7 @@ class TestCartAPI:
         assert response.json()["detail"] == "Cart is not found"
 
     async def test_remove_item_from_cart_success(
-            self,
-            app_with_route: FastAPI,
-            db_session: AsyncSession
+        self, app_with_route: FastAPI, db_session: AsyncSession
     ):
         cart = Cart(user_id=100)
         db_session.add(cart)
@@ -73,9 +68,7 @@ class TestCartAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
     async def test_remove_item_from_cart_not_in_cart(
-            self,
-            app_with_route: FastAPI,
-            db_session: AsyncSession
+        self, app_with_route: FastAPI, db_session: AsyncSession
     ):
         cart = Cart(user_id=100)
         db_session.add(cart)
@@ -89,9 +82,7 @@ class TestCartAPI:
         assert response.json()["detail"] == "Movie is not in the cart"
 
     async def test_clear_cart_success(
-            self,
-            app_with_route: FastAPI,
-            db_session: AsyncSession
+        self, app_with_route: FastAPI, db_session: AsyncSession
     ):
         cart = Cart(user_id=100)
         db_session.add(cart)

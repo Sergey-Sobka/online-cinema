@@ -56,9 +56,7 @@ class TestAddMovieToCartService:
         await db_session.commit()
 
         with pytest.raises(HTTPException) as exc_info:
-            await add_movie_to_cart(
-                db=db_session, user_id=user_id, movie_id=movie_id
-            )
+            await add_movie_to_cart(db=db_session, user_id=user_id, movie_id=movie_id)
 
         assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
         assert exc_info.value.detail == "Movie is already in your cart."
