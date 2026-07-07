@@ -9,6 +9,7 @@ from app.crud import social as social_crud
 from app.db.session import get_db_session
 from app.models import MovieComment, User
 from app.schemas.movie import CommentCreate, CommentResponse, PaginatedMovieResponse
+from app.worker import send_comment_notification_task
 
 router = APIRouter(prefix="/movies", tags=["User Social Actions"])
 
@@ -31,7 +32,7 @@ async def get_user_favorites(
     user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
-    **View authenticated user's bookmarked favorite movies list.**
+    **View an authenticated user's bookmarked favorite movies list.**
 
     Applies exact filtering, sorting, and pagination strategies over
     the active subset of movies explicitly saved to favorites by the current user.
@@ -95,7 +96,7 @@ async def remove_favorite(
     """
     **Remove a specific movie from the user's favorite bookmarks.**
 
-    Detaches the user favorite contextual
+    Detaches the user's favorite contextual
     binding mapping without deleting the movie itself.
 
     **Permissions Required:**
@@ -130,6 +131,13 @@ async def like_movie(
     - Valid authenticated JWT token.
     """
     await social_crud.set_movie_like(db, user.id, movie_id, is_like)
+    if is_like:
+        send_comment_notification_task.delay(
+            recipient_email=user.email,
+            subject="You liked a movie!",
+            message_body=f"Hello!\n\nYou have successfully liked "
+            f"the movie #{movie_id} in Online Cinema.\n\nThank you for your reaction!",
+        )
 
 
 @router.post(
@@ -190,4 +198,17 @@ async def add_comment(
     **Permissions Required:**
     - Valid authenticated JWT token.
     """
-    return await social_crud.add_movie_comment(db, user.id, movie_id, payload)
+    comment = await social_crud.add_movie_comment(db, user.id, movie_id, payload)
+
+    if hasattr(payload, "parent_id") and payload.parent_id is not None:
+        parent_comment = await social_crud.get_comment_by_id(db, payload.parent_id)
+
+        if parent_comment and parent_comment.user_id != user.id:
+            parent_user_email = parent_comment.user.email
+            send_comment_notification_task.delay(
+                recipient_email=parent_user_email,
+                subject="New reply to your comment!",
+                message_body=f"Hello!\n\nUser {user.email} left "
+                f"a reply to your comment on movie #{movie_id}.\n\nThank you!",
+            )
+    return comment

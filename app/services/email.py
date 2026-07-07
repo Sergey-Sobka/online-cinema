@@ -75,3 +75,24 @@ class EmailService:
         message.set_content("Dear client.\n\n" f"{text}.\n\n" "Thank you")
 
         self._send_message(message)
+
+    def send_notification_email(self, recipient: str, subject: str, body: str) -> None:
+        message = EmailMessage()
+        message["Subject"] = subject
+        message["From"] = self._settings.email_from
+        message["To"] = recipient
+        message.set_content(body)
+
+        try:
+            with smtplib.SMTP(
+                host=self._settings.smtp_host,
+                port=self._settings.smtp_port,
+            ) as smtp:
+                if self._settings.smtp_username and self._settings.smtp_password:
+                    smtp.login(
+                        user=self._settings.smtp_username,
+                        password=self._settings.smtp_password,
+                    )
+                smtp.send_message(message)
+        except (OSError, smtplib.SMTPException) as exc:
+            raise EmailDeliveryError("Notification email could not be sent.") from exc

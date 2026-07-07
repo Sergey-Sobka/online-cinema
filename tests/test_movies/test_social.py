@@ -19,8 +19,9 @@ class TestUserSocialActions:
         response = await client.post("/api/v1/movies/10/favorite")
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
+    @patch("app.api.social.send_comment_notification_task.delay")
     @patch("app.crud.social.set_movie_like")
-    async def test_like_movie(self, mock_social, client):
+    async def test_like_movie(self, mock_social, mock_notification, client):
         response = await client.post("/api/v1/movies/10/like?is_like=true")
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
