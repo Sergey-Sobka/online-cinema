@@ -33,11 +33,7 @@ async def add_movie_to_cart(db: AsyncSession, user_id: int, movie_id: int) -> Ca
                 detail="Movie is already in your cart.",
             )
 
-    is_purchased = await is_movie_purchased(
-        db,
-        user_id=user_id,
-        movie_id=movie_id
-    )
+    is_purchased = await is_movie_purchased(db, user_id=user_id, movie_id=movie_id)
 
     if is_purchased:
         raise HTTPException(
