@@ -25,8 +25,7 @@ class Order(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(),
-        nullable=False
+        server_default=func.now(), nullable=False
     )
     status: Mapped[OrderStatus] = mapped_column(
         Enum(OrderStatus),

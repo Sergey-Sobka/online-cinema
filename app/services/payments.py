@@ -6,7 +6,7 @@ from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from stripe import SignatureVerificationError
+from stripe import APIConnectionError, SignatureVerificationError, StripeError
 
 from app.core.config import Settings
 from app.models import (
@@ -64,13 +64,23 @@ class PaymentService:
                     price_at_payment=item.price_at_order,
                 )
             )
-
-        intent = stripe.PaymentIntent.create(
-            amount=int(calculated_total * 100),
-            currency="usd",
-            metadata={"order_id": str(order.id), "payment_id": str(new_payment.id)},
-            automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
-        )
+        try:
+            intent = stripe.PaymentIntent.create(
+                amount=int(calculated_total * 100),
+                currency="usd",
+                metadata={"order_id": str(order.id), "payment_id": str(new_payment.id)},
+                automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
+            )
+        except (APIConnectionError, StripeError) as err:
+            raise HTTPException(
+                status_code=503,
+                detail="Payment gateway is currently unavailable. "
+                "Please try again later.",
+            ) from err
+        except Exception as err:
+            raise HTTPException(
+                status_code=500, detail="Internal server error"
+            ) from err
         new_payment.external_payment_id = intent.id
         await self._session.commit()
         return await self._session.scalar(
