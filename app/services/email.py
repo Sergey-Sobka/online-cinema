@@ -75,3 +75,12 @@ class EmailService:
         message.set_content("Dear client.\n\n" f"{text}.\n\n" "Thank you")
 
         self._send_message(message)
+
+    def send_notification_email(self, recipient: str, subject: str, body: str) -> None:
+        message = EmailMessage()
+        message["Subject"] = subject
+        message["From"] = self._settings.email_from
+        message["To"] = recipient
+        message.set_content(body)
+
+        self._send_message(message)
