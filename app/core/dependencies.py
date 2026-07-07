@@ -40,6 +40,7 @@ def get_order_service(
 ) -> OrderService:
     return OrderService(session)
 
+
 async def require_moderator(
     user: Annotated[User, Depends(get_current_user)],
 ) -> User:
