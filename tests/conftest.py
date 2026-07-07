@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import joinedload
 from sqlalchemy.pool import StaticPool
 
-from app.api.dependencies import get_current_user, require_moderator
+from app.core.dependencies import get_current_user, require_moderator
 from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app

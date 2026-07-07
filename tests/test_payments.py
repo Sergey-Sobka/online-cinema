@@ -104,5 +104,5 @@ async def test_refund_stripe_error(db_session, admin_user, paid_payment):
     with patch("stripe.Refund.create") as mock_refund:
         mock_refund.side_effect = stripe.error.StripeError("Stripe is down")
         service = PaymentService(db_session, MagicMock(), MagicMock())
-        with pytest.raises(stripe.error.StripeError):
+        with pytest.raises(HTTPException):
             await service.refund(paid_payment.id, admin_user)
