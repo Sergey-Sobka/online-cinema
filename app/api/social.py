@@ -131,13 +131,6 @@ async def like_movie(
     - Valid authenticated JWT token.
     """
     await social_crud.set_movie_like(db, user.id, movie_id, is_like)
-    if is_like:
-        send_comment_notification_task.delay(
-            recipient_email=user.email,
-            subject="You liked a movie!",
-            message_body=f"Hello!\n\nYou have successfully liked "
-            f"the movie #{movie_id} in Online Cinema.\n\nThank you for your reaction!",
-        )
 
 
 @router.post(
