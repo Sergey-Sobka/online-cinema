@@ -16,14 +16,24 @@ from app.core.security import (
     verify_password,
 )
 from app.db.session import AsyncSessionLocal
-from app.models import ActivationToken, RefreshToken, User, UserGroup, UserGroupEnum
+from app.models import (
+    ActivationToken,
+    PasswordResetToken,
+    RefreshToken,
+    User,
+    UserGroup,
+    UserGroupEnum,
+)
 from app.schemas.auth import (
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
     MessageResponse,
     RefreshTokenRequest,
     RegisterRequest,
     ResendActivationRequest,
+    ResetPasswordRequest,
     TokenPairResponse,
 )
 from app.services.email import EmailDeliveryError, EmailService
@@ -136,6 +146,61 @@ class AuthService:
 
         return MessageResponse(message="Logged out successfully.")
 
+    async def change_password(
+        self,
+        user: User,
+        data: ChangePasswordRequest,
+    ) -> MessageResponse:
+        if not verify_password(data.old_password, user.hashed_password):
+            raise unauthorized("Invalid password.")
+
+        validate_password(data.new_password)
+        user.hashed_password = hash_password(data.new_password)
+        await self._delete_user_refresh_tokens(user.id)
+        await self._session.commit()
+        return MessageResponse(message="Password changed successfully.")
+
+    async def forgot_password(self, data: ForgotPasswordRequest) -> MessageResponse:
+        email = normalize_email(data.email)
+        user = await self._get_user_by_email(email)
+        response = MessageResponse(
+            message=(
+                "If this email is registered, "
+                "password reset instructions have been sent."
+            )
+        )
+        if user is None or not user.is_active:
+            return response
+
+        if user.password_reset_token is not None:
+            await self._session.delete(user.password_reset_token)
+            await self._session.flush()
+
+        reset_token = self._create_password_reset_token(user)
+        self._session.add(reset_token)
+        await self._session.flush()
+
+        await self._send_password_reset_email(email, reset_token.token)
+        await self._session.commit()
+        return response
+
+    async def reset_password(self, data: ResetPasswordRequest) -> MessageResponse:
+        reset_token = await self._get_password_reset_token(data.token)
+        if is_expired(reset_token.expires_at):
+            await self._session.delete(reset_token)
+            await self._session.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password reset token has expired.",
+            )
+
+        validate_password(data.new_password)
+        reset_token.user.hashed_password = hash_password(data.new_password)
+        await self._delete_user_refresh_tokens(reset_token.user_id)
+        await self._session.delete(reset_token)
+        await self._session.commit()
+        return MessageResponse(message="Password reset successfully.")
+
     async def _ensure_email_is_available(self, email: str) -> None:
         user = await self._get_user_by_email(email)
         if user is not None:
@@ -147,7 +212,10 @@ class AuthService:
     async def _get_user_by_email(self, email: str) -> User | None:
         result = await self._session.execute(
             select(User)
-            .options(selectinload(User.activation_token))
+            .options(
+                selectinload(User.activation_token),
+                selectinload(User.password_reset_token),
+            )
             .where(User.email == email)
         )
         return result.scalar_one_or_none()
@@ -200,6 +268,20 @@ class AuthService:
             raise unauthorized("Invalid refresh token.")
         return refresh_token
 
+    async def _get_password_reset_token(self, token: str) -> PasswordResetToken:
+        result = await self._session.execute(
+            select(PasswordResetToken)
+            .options(selectinload(PasswordResetToken.user))
+            .where(PasswordResetToken.token == token)
+        )
+        reset_token = result.scalar_one_or_none()
+        if reset_token is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Password reset token was not found.",
+            )
+        return reset_token
+
     def _create_activation_token(self, user: User) -> ActivationToken:
         return ActivationToken(
             user=user,
@@ -214,6 +296,14 @@ class AuthService:
             token=create_refresh_token_value(),
             expires_at=datetime.now(UTC)
             + timedelta(days=self._settings.refresh_token_expire_days),
+        )
+
+    def _create_password_reset_token(self, user: User) -> PasswordResetToken:
+        return PasswordResetToken(
+            user=user,
+            token=secrets.token_urlsafe(32),
+            expires_at=datetime.now(UTC)
+            + timedelta(hours=self._settings.password_reset_token_ttl_hours),
         )
 
     def _create_token_pair(self, user: User, refresh_token: str) -> TokenPairResponse:
@@ -231,6 +321,23 @@ class AuthService:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Activation email could not be sent. Please try again later.",
             ) from exc
+
+    async def _send_password_reset_email(self, email: str, token: str) -> None:
+        try:
+            self._email_service.send_password_reset_email(email, token)
+        except EmailDeliveryError as exc:
+            await self._session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "Password reset email could not be sent. Please try again later."
+                ),
+            ) from exc
+
+    async def _delete_user_refresh_tokens(self, user_id: int) -> None:
+        await self._session.execute(
+            delete(RefreshToken).where(RefreshToken.user_id == user_id)
+        )
 
 
 def normalize_email(email: str) -> str:

@@ -6,6 +6,7 @@ from app.models.test_models import Order, OrderItem, OrderStatus
 from app.models.user import (
     ActivationToken,
     GenderEnum,
+    PasswordResetToken,
     RefreshToken,
     User,
     UserGroup,
@@ -30,6 +31,7 @@ __all__ = [
     "Payment",
     "PaymentItems",
     "PaymentStatus",
+    "PasswordResetToken",
     "RefreshToken",
     "Star",
     "User",
