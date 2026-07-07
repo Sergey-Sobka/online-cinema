@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user
+from app.core.dependencies import get_current_user
 from app.db.session import get_db_session
 from app.models import User
 from app.schemas.auth import (

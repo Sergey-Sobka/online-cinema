@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 from app.api.auth import get_auth_service
-from app.api.dependencies import get_current_user
 from app.core.config import Settings
+from app.core.dependencies import get_current_user
 from app.core.security import verify_password
 from app.db.base import Base
 from app.db.session import get_db_session

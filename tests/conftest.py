@@ -1,12 +1,9 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.api.dependencies import get_current_user, require_moderator
-from app.db.base import Base
+from app.core.dependencies import get_current_user, require_moderator
 from app.db.session import get_db_session
 from app.main import app
 from app.models import User
@@ -36,27 +33,3 @@ async def client(mock_db, mock_user):
         yield ac
 
     app.dependency_overrides.clear()
-
-
-DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-
-
-@pytest_asyncio.fixture(scope="function")
-async def db_session():
-    engine = create_async_engine(DATABASE_URL, echo=False)
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    TestingSessionLocal = async_sessionmaker(
-        engine, expire_on_commit=False, class_=AsyncSession
-    )
-
-    async with TestingSessionLocal() as session:
-        yield session
-        await session.rollback()
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
-    await engine.dispose()
