@@ -1,0 +1,16 @@
+MOCK_FULL_MOVIE = {
+    "id": 1,
+    "title": "The Matrix",
+    "name": "The Matrix",
+    "description": "Neo...",
+    "year": 1999,
+    "time": 136,
+    "imdb": 8.7,
+    "price": 9.99,
+    "certification_id": 1,
+    "uuid": "123e4567-e89b-12d3-a456-426614174000",
+    "genres": [],
+    "directors": [],
+    "stars": [],
+    "certification": {"id": 1, "name": "R"},
+}

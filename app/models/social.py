@@ -1,9 +1,12 @@
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import CheckConstraint, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class FavoriteMovie(Base):
@@ -69,3 +72,5 @@ class MovieComment(Base):
     parent: Mapped[Optional["MovieComment"]] = relationship(
         remote_side=[id], back_populates="replies"
     )
+
+    user: Mapped["User"] = relationship()
