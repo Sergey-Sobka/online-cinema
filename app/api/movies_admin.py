@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import require_moderator
+from app.core.dependencies import require_moderator
 from app.crud import movies as movies_crud
 from app.db.session import get_db_session
 from app.models import Movie
