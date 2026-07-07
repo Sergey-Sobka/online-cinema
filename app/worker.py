@@ -3,6 +3,7 @@ import asyncio
 from celery import Celery
 
 from app.core.config import get_settings
+from app.services.email import EmailService
 
 settings = get_settings()
 
@@ -33,3 +34,17 @@ def cleanup_expired_activation_tokens() -> int:
     from app.services.auth import cleanup_expired_activation_tokens as cleanup
 
     return asyncio.run(cleanup())
+
+
+@celery_app.task(name="online_cinema.send_comment_notification")
+def send_comment_notification_task(
+    recipient_email: str, subject: str, message_body: str
+) -> str:
+    email_service = EmailService(settings)
+    try:
+        email_service.send_notification_email(
+            recipient=recipient_email, subject=subject, body=message_body
+        )
+        return f"Notification sent to {recipient_email}"
+    except Exception as e:
+        return f"Failed to send email: {str(e)}"
