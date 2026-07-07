@@ -32,7 +32,7 @@ class OrderService:
         if not items_data:
             raise HTTPException(status_code=400, detail="Cart is empty")
         try:
-            total = sum(item["price_at_order"] for item in items_data)
+            total = sum(Decimal(str(item["price_at_order"])) for item in items_data)
             new_order = Order(
                 user_id=current_user.id,
                 total_amount=Decimal(total),

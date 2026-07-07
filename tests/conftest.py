@@ -1,22 +1,19 @@
 import uuid
 from decimal import Decimal
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import joinedload
 from sqlalchemy.pool import StaticPool
-from httpx import ASGITransport, AsyncClient
 
 from app.api.dependencies import get_current_user, require_moderator
+from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
-from app.models import User
-
-from app.db.base import Base
 from app.models import (
     Certification,
     Movie,
@@ -27,6 +24,7 @@ from app.models import (
     UserGroupEnum,
 )
 from app.services.orders import OrderService
+
 
 @pytest.fixture
 def mock_db():
@@ -52,6 +50,7 @@ async def client(mock_db, mock_user):
         yield ac
 
     app.dependency_overrides.clear()
+
 
 @pytest.fixture
 async def db_session() -> AsyncSession:
