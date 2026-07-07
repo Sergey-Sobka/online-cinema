@@ -67,6 +67,9 @@ class User(Base):
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    password_reset_token: Mapped["PasswordResetToken | None"] = relationship(
+        back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
     cart: Mapped["Cart | None"] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
@@ -120,3 +123,18 @@ class RefreshToken(Base):
     )
 
     user: Mapped["User"] = relationship(back_populates="refresh_tokens")
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="password_reset_token")

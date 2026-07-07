@@ -6,9 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.movie import Director, Genre, Movie, MovieGenre, Star
+from app.models.social import FavoriteMovie
 from app.schemas.movie import MovieCreate, MovieUpdate
-
-# from app.models.social import FavoriteMovie
 
 
 async def get_movies_catalog(
@@ -20,6 +19,7 @@ async def get_movies_catalog(
     genre_id: int | None = None,
     search: str | None = None,
     sort_by: str | None = "popularity",
+    favorite_user_id: int | None = None,
 ) -> tuple[int, list[Movie]]:
     stmt = select(Movie).options(
         selectinload(Movie.genres),
@@ -28,10 +28,10 @@ async def get_movies_catalog(
         joinedload(Movie.certification),
     )
 
-    # if favorite_user_id:
-    #     stmt = stmt.join(FavoriteMovie, Movie.id == FavoriteMovie.movie_id).where(
-    #         FavoriteMovie.user_id == favorite_user_id
-    #     )
+    if favorite_user_id:
+        stmt = stmt.join(FavoriteMovie, Movie.id == FavoriteMovie.movie_id).where(
+            FavoriteMovie.user_id == favorite_user_id
+        )
 
     if search:
         stmt = stmt.where(

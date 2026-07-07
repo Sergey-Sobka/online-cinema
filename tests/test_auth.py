@@ -14,13 +14,23 @@ from app.core.security import verify_password
 from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
-from app.models import ActivationToken, RefreshToken, User, UserGroup, UserGroupEnum
+from app.models import (
+    ActivationToken,
+    PasswordResetToken,
+    RefreshToken,
+    User,
+    UserGroup,
+    UserGroupEnum,
+)
 from app.schemas.auth import (
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
     MessageResponse,
     RefreshTokenRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     TokenPairResponse,
 )
 from app.services.auth import (
@@ -34,13 +44,20 @@ from app.services.email import EmailDeliveryError
 class FakeEmailService:
     def __init__(self) -> None:
         self.activation_emails: list[tuple[str, str]] = []
+        self.password_reset_emails: list[tuple[str, str]] = []
 
     def send_activation_email(self, recipient: str, token: str) -> None:
         self.activation_emails.append((recipient, token))
 
+    def send_password_reset_email(self, recipient: str, token: str) -> None:
+        self.password_reset_emails.append((recipient, token))
+
 
 class FailingEmailService:
     def send_activation_email(self, recipient: str, token: str) -> None:
+        raise EmailDeliveryError("SMTP is unavailable.")
+
+    def send_password_reset_email(self, recipient: str, token: str) -> None:
         raise EmailDeliveryError("SMTP is unavailable.")
 
 
@@ -62,6 +79,19 @@ class FakeAuthService:
 
     async def logout(self, data: LogoutRequest) -> MessageResponse:
         return MessageResponse(message="Logged out successfully.")
+
+    async def change_password(
+        self,
+        user: User,
+        data: ChangePasswordRequest,
+    ) -> MessageResponse:
+        return MessageResponse(message="Password changed successfully.")
+
+    async def forgot_password(self, data: ForgotPasswordRequest) -> MessageResponse:
+        return MessageResponse(message="reset instructions sent")
+
+    async def reset_password(self, data: ResetPasswordRequest) -> MessageResponse:
+        return MessageResponse(message="Password reset successfully.")
 
 
 @pytest.fixture
@@ -339,6 +369,95 @@ async def test_get_current_active_user_returns_user(
     )
 
     assert user.email == "user@example.com"
+
+
+async def test_change_password_updates_hash_and_deletes_refresh_tokens(
+    db_session: AsyncSession,
+    settings: Settings,
+) -> None:
+    user = await create_active_user(db_session, settings)
+    service = AuthService(db_session, settings, FakeEmailService())  # type: ignore[arg-type]
+    await service.login(LoginRequest(email=user.email, password="Password1"))
+
+    response = await service.change_password(
+        user,
+        ChangePasswordRequest(old_password="Password1", new_password="NewPassword1"),
+    )
+
+    refresh_token = (
+        await db_session.execute(select(RefreshToken))
+    ).scalar_one_or_none()
+    assert response.message == "Password changed successfully."
+    assert verify_password("NewPassword1", user.hashed_password)
+    assert refresh_token is None
+
+
+async def test_forgot_password_creates_token_and_sends_email(
+    db_session: AsyncSession,
+    settings: Settings,
+) -> None:
+    user = await create_active_user(db_session, settings)
+    email_service = FakeEmailService()
+    service = AuthService(db_session, settings, email_service)  # type: ignore[arg-type]
+
+    response = await service.forgot_password(ForgotPasswordRequest(email=user.email))
+
+    reset_token = (
+        await db_session.execute(
+            select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
+        )
+    ).scalar_one()
+    assert "password reset instructions" in response.message
+    assert email_service.password_reset_emails == [(user.email, reset_token.token)]
+
+
+async def test_forgot_password_rolls_back_token_when_email_fails(
+    db_session: AsyncSession,
+    settings: Settings,
+) -> None:
+    user = await create_active_user(db_session, settings)
+    service = AuthService(db_session, settings, FailingEmailService())  # type: ignore[arg-type]
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.forgot_password(ForgotPasswordRequest(email=user.email))
+
+    reset_token = (
+        await db_session.execute(select(PasswordResetToken))
+    ).scalar_one_or_none()
+    assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert reset_token is None
+
+
+async def test_reset_password_updates_password_and_deletes_tokens(
+    db_session: AsyncSession,
+    settings: Settings,
+) -> None:
+    user = await create_active_user(db_session, settings)
+    service = AuthService(db_session, settings, FakeEmailService())  # type: ignore[arg-type]
+    login_response = await service.login(
+        LoginRequest(email=user.email, password="Password1")
+    )
+    await service.forgot_password(ForgotPasswordRequest(email=user.email))
+    reset_token = (await db_session.execute(select(PasswordResetToken))).scalar_one()
+
+    response = await service.reset_password(
+        ResetPasswordRequest(token=reset_token.token, new_password="ResetPassword1")
+    )
+
+    remaining_reset_token = (
+        await db_session.execute(select(PasswordResetToken))
+    ).scalar_one_or_none()
+    remaining_refresh_token = (
+        await db_session.execute(
+            select(RefreshToken).where(
+                RefreshToken.token == login_response.refresh_token
+            )
+        )
+    ).scalar_one_or_none()
+    assert response.message == "Password reset successfully."
+    assert verify_password("ResetPassword1", user.hashed_password)
+    assert remaining_reset_token is None
+    assert remaining_refresh_token is None
 
 
 async def test_auth_router_delegates_to_service() -> None:
