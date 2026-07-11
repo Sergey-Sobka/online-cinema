@@ -6,7 +6,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import Movie, Order, OrderItem, OrderStatus, User, UserGroupEnum
+from app.crud import clear_cart
+from app.models import Movie, Order, OrderItem, OrderStatus, User, UserGroupEnum, Cart
+from app.services.cart import is_movie_purchased
+
+
+
+
 
 
 class OrderService:
@@ -16,8 +22,27 @@ class OrderService:
     ) -> None:
         self._session = session
 
-    async def place_order(self, current_user: User, movie_ids: list[int]) -> Order:
-        movie_ids = list(dict.fromkeys(movie_ids))
+    async def movies_purchased_by_user(self, current_user, movie_ids):
+        query = select(OrderItem.movie_id).join(Order).where(
+            Order.user_id == current_user.id,
+            Order.status == OrderStatus.PAID,
+            OrderItem.movie_id.in_(movie_ids)
+        )
+        return (await self._session.scalars(query)).all()
+
+
+    async def place_order(self, current_user: User, cart_id: int) -> Order:
+        cart = await self._session.scalar(select(Cart).options(selectinload(Cart.cart_items)).where(Cart.id == cart_id))
+        if not cart:
+            raise HTTPException(status_code=404, detail="Cart not found")
+        movie_ids = list(dict.fromkeys([cart_item.movie_id
+                                        for cart_item in cart.cart_items]))
+
+        purchased_movies = await self.movies_purchased_by_user(current_user, movie_ids)
+        if purchased_movies:
+            raise HTTPException(
+                status_code=400, detail=f"Some movies are purchased: {purchased_movies}"
+            )
         movies = (
             await self._session.scalars(select(Movie).where(Movie.id.in_(movie_ids)))
         ).all()
@@ -27,6 +52,21 @@ class OrderService:
             raise HTTPException(
                 status_code=400, detail=f"Some movies are unavailable: {missing_ids}"
             )
+
+        stmt = (
+            select(Order)
+            .where(Order.user_id == current_user.id)
+            .options(selectinload(Order.order_items))
+        )
+        orders = (await self._session.scalars(stmt)).all()
+        for order in orders:
+            order_item_movie_ids = []
+            for order_item in order.order_items:
+                order_item_movie_ids.append(order_item.movie_id)
+            if set(order_item_movie_ids) == set(movie_ids) and order.status == OrderStatus.PENDING:
+                raise HTTPException(
+                    status_code=400, detail=f"Order {order.id} with movie_ids {movie_ids} already exists"
+                )
         items_data = [
             {"movie_id": movie.id, "price_at_order": movie.price} for movie in movies
         ]
@@ -48,6 +88,8 @@ class OrderService:
                     price_at_order=item["price_at_order"],
                 )
                 self._session.add(order_item)
+            await clear_cart(self._session, cart_id)
+
         except SQLAlchemyError as err:
             await self._session.rollback()
             raise HTTPException(
