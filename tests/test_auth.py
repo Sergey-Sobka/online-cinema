@@ -106,7 +106,9 @@ async def db_session() -> AsyncSession:
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     async with session_factory() as session:
-        session.add(UserGroup(name=UserGroupEnum.USER))
+        session.add_all(
+            [UserGroup(name=UserGroupEnum.USER), UserGroup(name=UserGroupEnum.ADMIN)]
+        )
         await session.commit()
         yield session
 
@@ -328,7 +330,14 @@ async def test_refresh_returns_new_access_token(
     )
 
     assert refresh_response.access_token
-    assert refresh_response.refresh_token == login_response.refresh_token
+    assert refresh_response.refresh_token != login_response.refresh_token
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.refresh(
+            RefreshTokenRequest(refresh_token=login_response.refresh_token)
+        )
+
+    assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 async def test_logout_deletes_refresh_token(
@@ -495,3 +504,36 @@ async def test_me_endpoint_uses_auth_dependency(db_session: AsyncSession) -> Non
     app.dependency_overrides.clear()
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {"email": "user@example.com"}
+
+
+async def test_admin_can_create_and_delete_user(db_session: AsyncSession) -> None:
+    admin_user = User(
+        email="admin@example.com",
+        hashed_password="hash",
+        is_active=True,
+        group=UserGroup(name=UserGroupEnum.ADMIN),
+    )
+    app.dependency_overrides[get_db_session] = lambda: db_session
+    app.dependency_overrides[get_current_user] = lambda: admin_user
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        create_response = await client.post(
+            "/api/v1/admin/users",
+            json={"email": "new-user@example.com", "password": "Password1"},
+        )
+        user_id = create_response.json()["id"]
+        delete_response = await client.delete(f"/api/v1/admin/users/{user_id}")
+
+    app.dependency_overrides.clear()
+    deleted_user = (
+        await db_session.execute(
+            select(User).where(User.email == "new-user@example.com")
+        )
+    ).scalar_one_or_none()
+    assert create_response.status_code == status.HTTP_201_CREATED
+    assert create_response.json()["message"] == "User created successfully."
+    assert create_response.json()["email"] == "new-user@example.com"
+    assert delete_response.status_code == status.HTTP_200_OK
+    assert delete_response.json() == {"message": "User deleted successfully."}
+    assert deleted_user is None
