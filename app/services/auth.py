@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -69,7 +70,12 @@ class AuthService:
 
         activation_token = self._create_activation_token(user)
         self._session.add(activation_token)
-        await self._session.flush()
+
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:
+            await self._session.rollback()
+            raise email_conflict() from exc
 
         await self._send_activation_email(email, activation_token.token)
         await self._session.commit()
@@ -135,7 +141,12 @@ class AuthService:
                 detail="User account is inactive.",
             )
 
-        return self._create_token_pair(refresh_token.user, refresh_token.token)
+        user = refresh_token.user
+        await self._session.delete(refresh_token)
+        new_refresh_token = self._create_refresh_token(user)
+        self._session.add(new_refresh_token)
+        await self._session.commit()
+        return self._create_token_pair(user, new_refresh_token.token)
 
     async def logout(self, data: LogoutRequest) -> MessageResponse:
         result = await self._session.execute(
@@ -206,10 +217,7 @@ class AuthService:
     async def _ensure_email_is_available(self, email: str) -> None:
         user = await self._get_user_by_email(email)
         if user is not None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="User with this email already exists.",
-            )
+            raise email_conflict()
 
     async def _get_user_by_email(self, email: str) -> User | None:
         result = await self._session.execute(
@@ -367,6 +375,13 @@ def unauthorized(detail: str) -> HTTPException:
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail=detail,
         headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+def email_conflict() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="User with this email already exists.",
     )
 
 
