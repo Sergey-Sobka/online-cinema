@@ -5,20 +5,22 @@ import pytest
 import stripe
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from stripe import APIConnectionError
 
-from app.models import Payment, PaymentStatus
+from app.models import Payment, PaymentStatus, User
 from app.services.payments import PaymentService
 
 
 @pytest.mark.asyncio
-async def test_create_payment_intent_success(db_session, create_order):
+async def test_create_payment_intent_success(uow_factory, db_session, create_order):
     order = await create_order()
+    uow = uow_factory()
     with patch("stripe.PaymentIntent.create") as mock_stripe:
         mock_stripe.return_value = MagicMock(
             id="pi_12345", client_secret="sk_test_secret"
         )
-        service = PaymentService(db_session, MagicMock(), MagicMock())
+        service = PaymentService(uow, MagicMock(), MagicMock())
         payment, client_secret = await service.create_payment_intent(
             order.id, order.user_id
         )
@@ -27,37 +29,48 @@ async def test_create_payment_intent_success(db_session, create_order):
 
 
 @pytest.mark.asyncio
-async def test_create_payment_intent_stripe_connection_error(db_session, create_order):
+async def test_create_payment_intent_stripe_connection_error(
+    uow_factory, db_session, create_order
+):
     order = await create_order()
+    uow = uow_factory()
     with patch("stripe.PaymentIntent.create") as mock_stripe:
         mock_stripe.side_effect = APIConnectionError("Connection lost")
-        service = PaymentService(db_session, MagicMock(), MagicMock())
+        service = PaymentService(uow, MagicMock(), MagicMock())
         with pytest.raises(HTTPException) as exc:
             await service.create_payment_intent(order.id, order.user_id)
         assert exc.value.status_code == 503
 
 
 @pytest.mark.asyncio
-async def test_create_payment_intent_order_not_found(db_session):
-    service = PaymentService(db_session, MagicMock(), MagicMock())
+async def test_create_payment_intent_order_not_found(uow_factory, db_session):
+    uow = uow_factory()
+    service = PaymentService(uow, MagicMock(), MagicMock())
     with pytest.raises(HTTPException) as exc:
         await service.create_payment_intent(999, 1)
     assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_create_payment_intent_price_mismatch(db_session, create_order):
+async def test_create_payment_intent_price_mismatch(
+    uow_factory, db_session, create_order
+):
     order = await create_order()
     order.total_amount = Decimal("999.00")
+    db_session.add(order)
     await db_session.commit()
-    service = PaymentService(db_session, MagicMock(), MagicMock())
+    await db_session.refresh(order)
+    uow = uow_factory()
+    service = PaymentService(uow, MagicMock(), MagicMock())
     with pytest.raises(HTTPException) as exc:
         await service.create_payment_intent(order.id, order.user_id)
     assert exc.value.status_code == 400
+    assert exc.value.detail == "Price changed, remake order"
 
 
 @pytest.mark.asyncio
-async def test_handle_webhook_succeeded(db_session, paid_payment):
+async def test_handle_webhook_succeeded(uow_factory, db_session, paid_payment):
+    paid_payment_id = paid_payment.id
     paid_payment.status = PaymentStatus.PENDING
     await db_session.commit()
 
@@ -66,43 +79,62 @@ async def test_handle_webhook_succeeded(db_session, paid_payment):
             "type": "payment_intent.succeeded",
             "data": {"object": {"id": paid_payment.external_payment_id}},
         }
-        service = PaymentService(db_session, MagicMock(), MagicMock())
+        uow = uow_factory()
+        service = PaymentService(uow, MagicMock(), MagicMock())
         result = await service.handle_webhook(b"payload", "sig", MagicMock())
         assert result["status"] == "success"
-        await db_session.refresh(paid_payment)
-        assert paid_payment.status == PaymentStatus.SUCCESSFUL
+
+        # Manually commit if necessary because we removed implicit commit
+        async with uow:
+            await uow.commit()
+
+        # Verify status in database
+        async with uow:
+            payment = await uow.payments.get_payment_by_id(paid_payment_id)
+            assert payment.status == PaymentStatus.SUCCESSFUL
 
 
 @pytest.mark.asyncio
-async def test_get_history(db_session, create_order):
-    order = await create_order()
+async def test_get_history(uow_factory, db_session, create_user):
+    # Ensure user has group loaded
+    user = await create_user(group_id=2)  # ADMIN group id = 2
+    stmt = select(User).options(joinedload(User.group)).where(User.id == user.id)
+    user = (await db_session.execute(stmt)).scalar_one()
+
     for _ in range(5):
         db_session.add(
             Payment(
-                user_id=order.user_id,
-                order_id=order.id,
+                user_id=user.id,
+                order_id=1,
                 amount=Decimal(100),
                 status=PaymentStatus.PENDING,
             )
         )
     await db_session.commit()
-    payments = (await db_session.execute(select(Payment))).scalars().all()
-    assert len(payments) == 5
+    uow = uow_factory()
+
+    async with uow:
+        payments = await uow.payments.get_filtered_payments(user, {})
+        assert len(payments) == 5
 
 
 @pytest.mark.asyncio
-async def test_refund_success(db_session, admin_user, paid_payment):
+async def test_refund_success(uow_factory, db_session, admin_user, paid_payment):
     with patch("stripe.Refund.create") as mock_refund:
         mock_refund.return_value = MagicMock(id="re_987")
-        service = PaymentService(db_session, MagicMock(), MagicMock())
-        refund_id = await service.refund(paid_payment.id, admin_user)
-        assert refund_id == "re_987"
+        uow = uow_factory()
+        service = PaymentService(uow, MagicMock(), MagicMock())
+        async with uow:
+            refund_id = await service.refund(paid_payment.id, admin_user)
+            assert refund_id == "re_987"
 
 
 @pytest.mark.asyncio
-async def test_refund_stripe_error(db_session, admin_user, paid_payment):
+async def test_refund_stripe_error(uow_factory, db_session, admin_user, paid_payment):
     with patch("stripe.Refund.create") as mock_refund:
         mock_refund.side_effect = stripe.error.StripeError("Stripe is down")
-        service = PaymentService(db_session, MagicMock(), MagicMock())
+        uow = uow_factory()
+        service = PaymentService(uow, MagicMock(), MagicMock())
         with pytest.raises(HTTPException):
-            await service.refund(paid_payment.id, admin_user)
+            async with uow:
+                await service.refund(paid_payment.id, admin_user)
