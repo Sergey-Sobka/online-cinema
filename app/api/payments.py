@@ -53,7 +53,7 @@ async def get_payment_history(
         PaymentStatus | None,
         Query(description="pending, successful, canceled, or refunded"),
     ] = None,
-) -> list[Payment]:
+) -> list[Payment] | []:
     filters = {
         "user_id": user_id,
         "start_date": start_date,

@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Any
 
 from fastapi import HTTPException
 
@@ -70,8 +71,8 @@ class OrderService:
             return new_order
 
     async def get_history(
-        self, current_user: User, filters: dict[str, str]
-    ) -> list[Order]:
+        self, current_user: User, filters: dict[str, Any]
+    ) -> list[Order] | None:
         return await self.uow.orders.get_filtered_orders(current_user, filters)
 
     async def get_single_order(self, order_id: int, current_user: User) -> Order | None:
@@ -85,7 +86,7 @@ class OrderService:
             raise HTTPException(status_code=403, detail="You cannot view this order")
         return order
 
-    async def cancel_order(self, order_id: int, current_user: User):
+    async def cancel_order(self, order_id: int, current_user: User) -> dict[str, str]:
         async with self.uow:
             order = await self.uow.orders.get_order_by_id(order_id)
             if not order:

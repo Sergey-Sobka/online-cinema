@@ -1,17 +1,18 @@
 from datetime import UTC
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
 
-from app.models import Order, OrderStatus, Payment, PaymentStatus, UserGroupEnum
+from app.models import Order, OrderStatus, Payment, PaymentStatus, User, UserGroupEnum
 
 
 class PaymentRepository:
     def __init__(self, session):
         self._session = session
 
-    async def get_payments_by_order_id(self, order_id: int) -> Payment:
+    async def get_payments_by_order_id(self, order_id: int) -> list[Payment] | []:
         return (
             await self._session.scalars(
                 select(Payment.id)
@@ -40,20 +41,22 @@ class PaymentRepository:
         await self._session.flush()
         return new_payment
 
-    async def get_payment_by_id(self, payment_id: int) -> Payment:
+    async def get_payment_by_id(self, payment_id: int) -> Payment | None:
         return await self._session.scalar(
             select(Payment)
             .options(selectinload(Payment.payment_items))
             .where(Payment.id == payment_id)
         )
 
-    async def get_payment_by_external_id(self, payment_external_id: int) -> Payment:
+    async def get_payment_by_external_id(
+        self, payment_external_id: int
+    ) -> Payment | None:
         return await self._session.scalar(
             select(Payment).where(Payment.external_payment_id == payment_external_id)
         )
 
     async def get_filtered_payments(
-        self, current_user, filters: dict[str, str]
+        self, current_user: User, filters: dict[str, Any]
     ) -> list[Payment]:
         query = (
             select(Payment)

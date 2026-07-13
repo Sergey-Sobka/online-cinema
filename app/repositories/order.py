@@ -1,5 +1,6 @@
 from datetime import UTC
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -8,12 +9,12 @@ from app.models import Cart, Movie, Order, OrderItem, OrderStatus, User, UserGro
 
 
 class OrderRepository:
-    def __init__(self, session) -> None:
+    def __init__(self, session: Any) -> None:
         self._session = session
 
     async def movies_purchased_by_user(
         self, current_user: User, movie_ids: list[int]
-    ) -> list[int]:
+    ) -> list[int] | []:
         query = (
             select(OrderItem.movie_id)
             .join(Order)
@@ -25,14 +26,14 @@ class OrderRepository:
         )
         return (await self._session.scalars(query)).all()
 
-    async def get_cart_by_id(self, cart_id: int) -> Cart:
+    async def get_cart_by_id(self, cart_id: int) -> Cart | None:
         return await self._session.scalar(
             select(Cart)
             .options(selectinload(Cart.cart_items))
             .where(Cart.id == cart_id)
         )
 
-    async def get_user_orders(self, current_user: User) -> list[Order]:
+    async def get_user_orders(self, current_user: User) -> list[Order] | None:
         stmt = (
             select(Order)
             .where(Order.user_id == current_user.id)
@@ -56,7 +57,7 @@ class OrderRepository:
         return order
 
     async def get_filtered_orders(
-        self, current_user: User, filters: dict[str, str]
+        self, current_user: User, filters: dict[str, Any]
     ) -> list[Order]:
         query = (
             select(Order)
@@ -88,7 +89,7 @@ class OrderRepository:
         result = await self._session.execute(query)
         return list(result.scalars().all())
 
-    async def get_order_by_id(self, order_id: int) -> Order:
+    async def get_order_by_id(self, order_id: int) -> Order | None:
         return await self._session.scalar(
             select(Order)
             .options(selectinload(Order.order_items))

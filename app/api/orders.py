@@ -22,7 +22,7 @@ async def get_orders_history(
     status: Annotated[
         OrderStatus | None, Query(description="successful, canceled, or refunded")
     ] = None,
-) -> list[Order]:
+) -> list[Order] | None:
     filters = {
         "user_id": user_id,
         "start_date": start_date,
@@ -37,7 +37,7 @@ async def get_order_detail(
     order_id: int,
     service: Annotated[OrderService, Depends(get_order_service)],
     current_user: Annotated[User, Depends(get_current_user)],
-) -> Order:
+) -> Order | None:
     return await service.get_single_order(order_id, current_user)
 
 
@@ -46,5 +46,5 @@ async def cancel_order_by_id(
     order_id: int,
     service: Annotated[OrderService, Depends(get_order_service)],
     current_user: Annotated[User, Depends(get_current_user)],
-) -> None:
+) -> dict[str, str]:
     return await service.cancel_order(order_id, current_user)
