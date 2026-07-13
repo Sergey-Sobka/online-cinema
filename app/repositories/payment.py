@@ -46,14 +46,14 @@ class PaymentRepository:
             select(Payment)
             .options(selectinload(Payment.payment_items))
             .where(Payment.id == payment_id)
-        ) # type: ignore
+        )  # type: ignore
 
     async def get_payment_by_external_id(
         self, payment_external_id: int
     ) -> Payment | None:
         return await self._session.scalar(
             select(Payment).where(Payment.external_payment_id == payment_external_id)
-        ) # type: ignore
+        )  # type: ignore
 
     async def get_filtered_payments(
         self, current_user: User, filters: dict[str, Any]
