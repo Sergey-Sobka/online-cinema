@@ -66,12 +66,12 @@ class AuthService:
             cart=Cart(),
         )
         self._session.add(user)
-        await self._session.flush()
-
-        activation_token = self._create_activation_token(user)
-        self._session.add(activation_token)
 
         try:
+            await self._session.flush()
+
+            activation_token = self._create_activation_token(user)
+            self._session.add(activation_token)
             await self._session.flush()
         except IntegrityError as exc:
             await self._session.rollback()
