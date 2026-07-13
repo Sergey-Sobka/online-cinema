@@ -50,7 +50,8 @@ async def get_payment_history(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     status: Annotated[
-        PaymentStatus | None, Query(description="successful, canceled, or refunded")
+        PaymentStatus | None,
+        Query(description="pending, successful, canceled, or refunded"),
     ] = None,
 ) -> list[Payment]:
     filters = {
