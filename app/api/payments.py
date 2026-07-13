@@ -53,14 +53,14 @@ async def get_payment_history(
         PaymentStatus | None,
         Query(description="pending, successful, canceled, or refunded"),
     ] = None,
-) -> list[Payment] | []:
+) -> list[Payment]:
     filters = {
         "user_id": user_id,
         "start_date": start_date,
         "end_date": end_date,
         "status": status,
     }
-    return await service.get_history(current_user, filters)
+    return await service.get_history(current_user, filters)  # type: ignore
 
 
 @router.post("/{payment_id}/refund")

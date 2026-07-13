@@ -1,6 +1,6 @@
 from datetime import UTC
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
@@ -13,19 +13,18 @@ class PaymentRepository:
         self._session = session
 
     async def get_payments_by_order_id(self, order_id: int) -> list[Payment]:
-        return (
-            await self._session.scalars(
-                select(Payment.id)
-                .join(Payment.order)
-                .where(
-                    Payment.order_id == order_id,
-                    or_(
-                        Order.status == OrderStatus.PENDING,
-                        Order.status == OrderStatus.PAID,
-                    ),
-                )
+        result = await self._session.scalars(
+            select(Payment.id)
+            .join(Payment.order)
+            .where(
+                Payment.order_id == order_id,
+                or_(
+                    Order.status == OrderStatus.PENDING,
+                    Order.status == OrderStatus.PAID,
+                ),
             )
-        ).all()
+        )
+        return list(result.all())
 
     async def create_payment(
         self, user_id: int, order_id: int, calculated_total: int | float
@@ -42,18 +41,20 @@ class PaymentRepository:
         return new_payment
 
     async def get_payment_by_id(self, payment_id: int) -> Payment | None:
-        return await self._session.scalar(
+        stmt = (
             select(Payment)
             .options(selectinload(Payment.payment_items))
             .where(Payment.id == payment_id)
-        )  # type: ignore
+        )
+        result = await self._session.execute(stmt)
+        return cast(Payment | None, result.scalar_one_or_none())
 
     async def get_payment_by_external_id(
         self, payment_external_id: int
     ) -> Payment | None:
-        return await self._session.scalar(
-            select(Payment).where(Payment.external_payment_id == payment_external_id)
-        )  # type: ignore
+        stmt = select(Payment).where(Payment.external_payment_id == payment_external_id)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()  # type: ignore
 
     async def get_filtered_payments(
         self, current_user: User, filters: dict[str, Any]

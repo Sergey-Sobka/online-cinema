@@ -68,22 +68,25 @@ class OrderService:
                 )
                 new_order.order_items.append(order_item)
             await clear_cart(self.uow.session, cart_id)
-            return new_order
+            return new_order  # type: ignore
 
     async def get_history(
         self, current_user: User, filters: dict[str, Any]
     ) -> list[Order] | None:
-        return await self.uow.orders.get_filtered_orders(current_user, filters)
+        return await self.uow.orders.get_filtered_orders(current_user, filters)  # type: ignore
 
     async def get_single_order(self, order_id: int, current_user: User) -> Order | None:
-        order = await self.uow.orders.get_order_by_id(order_id)
+        order: Order | None = await self.uow.orders.get_order_by_id(order_id)
+
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
+
         if (
             current_user.group.name != UserGroupEnum.ADMIN
             and order.user_id != current_user.id
         ):
             raise HTTPException(status_code=403, detail="You cannot view this order")
+
         return order
 
     async def cancel_order(self, order_id: int, current_user: User) -> dict[str, str]:

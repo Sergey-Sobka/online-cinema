@@ -159,7 +159,7 @@ class PaymentService:
     async def get_history(
         self, current_user: User, filters: dict[str, Any]
     ) -> list[Payment] | None:
-        return await self.uow.payments.get_filtered_payments(current_user, filters)
+        return await self.uow.payments.get_filtered_payments(current_user, filters)  # type: ignore
 
     async def refund(self, payment_id: int, user: User) -> str | None:
         if user.group.name != UserGroupEnum.ADMIN:

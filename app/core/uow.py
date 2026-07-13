@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 from app.core.uow_abstraction import IUnitOfWork
 from app.repositories.order import OrderRepository
@@ -31,15 +31,15 @@ class SqlAlchemyUnitOfWork(IUnitOfWork):
 
     @property
     def orders(self) -> OrderRepository:
-        return self.get_repo(OrderRepository)
+        return cast(OrderRepository, self.get_repo(OrderRepository))
 
     @property
     def payments(self) -> PaymentRepository:
-        return self.get_repo(PaymentRepository)
+        return cast(PaymentRepository, self.get_repo(PaymentRepository))
 
     @property
     def users(self) -> UserRepository:
-        return self.get_repo(UserRepository)
+        return cast(UserRepository, self.get_repo(UserRepository))
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         if exc_type:
