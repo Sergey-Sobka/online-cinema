@@ -9,10 +9,10 @@ from app.models import Order, OrderStatus, Payment, PaymentStatus, User, UserGro
 
 
 class PaymentRepository:
-    def __init__(self, session):
+    def __init__(self, session: Any) -> None:
         self._session = session
 
-    async def get_payments_by_order_id(self, order_id: int) -> list[Payment] | []:
+    async def get_payments_by_order_id(self, order_id: int) -> list[Payment]:
         return (
             await self._session.scalars(
                 select(Payment.id)
@@ -46,14 +46,14 @@ class PaymentRepository:
             select(Payment)
             .options(selectinload(Payment.payment_items))
             .where(Payment.id == payment_id)
-        )
+        ) # type: ignore
 
     async def get_payment_by_external_id(
         self, payment_external_id: int
     ) -> Payment | None:
         return await self._session.scalar(
             select(Payment).where(Payment.external_payment_id == payment_external_id)
-        )
+        ) # type: ignore
 
     async def get_filtered_payments(
         self, current_user: User, filters: dict[str, Any]

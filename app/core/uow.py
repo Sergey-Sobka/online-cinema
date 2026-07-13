@@ -9,7 +9,7 @@ from app.repositories.users import UserRepository
 class SqlAlchemyUnitOfWork(IUnitOfWork):
     def __init__(self, session_factory: Any) -> None:
         self.session_factory = session_factory
-        self._repositories = {}
+        self._repositories: dict[type, Any] = {}
 
     async def __aenter__(self) -> IUnitOfWork:
         self.session = self.session_factory()

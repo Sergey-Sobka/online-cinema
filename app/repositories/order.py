@@ -31,7 +31,7 @@ class OrderRepository:
             select(Cart)
             .options(selectinload(Cart.cart_items))
             .where(Cart.id == cart_id)
-        )
+        ) # type: ignore
 
     async def get_user_orders(self, current_user: User) -> list[Order] | None:
         stmt = (
@@ -39,13 +39,13 @@ class OrderRepository:
             .where(Order.user_id == current_user.id)
             .options(selectinload(Order.order_items))
         )
-        orders = (await self._session.scalars(stmt)).all()
-        return orders
+        return (await self._session.scalars(stmt)).all() # type: ignore
+
 
     async def get_movies_from_ids(self, movie_ids: list[int]) -> list[Movie]:
         return (
             await self._session.scalars(select(Movie).where(Movie.id.in_(movie_ids)))
-        ).all()
+        ).all() # type: ignore
 
     async def create_order(self, current_user: User, total: float) -> Order:
         order = Order(
@@ -94,8 +94,9 @@ class OrderRepository:
             select(Order)
             .options(selectinload(Order.order_items))
             .where(Order.id == order_id)
-        )
+        ) # type: ignore
 
     async def change_order_status(self, order_id: int, status: OrderStatus) -> None:
         order = await self.get_order_by_id(order_id)
-        order.status = status
+        if order is not None:
+            order.status = status
