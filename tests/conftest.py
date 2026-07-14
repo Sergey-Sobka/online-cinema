@@ -58,6 +58,11 @@ async def client(mock_db, mock_user):
 
 
 @pytest.fixture
+async def uow(db_session):
+    return SqlAlchemyUnitOfWork(lambda: db_session)
+
+
+@pytest.fixture
 def uow_factory(db_session):
     return lambda: SqlAlchemyUnitOfWork(lambda: db_session)
 

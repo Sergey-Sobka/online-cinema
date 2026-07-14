@@ -13,9 +13,8 @@ from app.services.payments import PaymentService
 
 
 @pytest.mark.asyncio
-async def test_create_payment_intent_success(uow_factory, db_session, create_order):
+async def test_create_payment_intent_success(uow, create_order):
     order = await create_order()
-    uow = uow_factory()
     with patch("stripe.PaymentIntent.create") as mock_stripe:
         mock_stripe.return_value = MagicMock(
             id="pi_12345", client_secret="sk_test_secret"
@@ -29,11 +28,8 @@ async def test_create_payment_intent_success(uow_factory, db_session, create_ord
 
 
 @pytest.mark.asyncio
-async def test_create_payment_intent_stripe_connection_error(
-    uow_factory, db_session, create_order
-):
+async def test_create_payment_intent_stripe_connection_error(uow, create_order):
     order = await create_order()
-    uow = uow_factory()
     with patch("stripe.PaymentIntent.create") as mock_stripe:
         mock_stripe.side_effect = APIConnectionError("Connection lost")
         service = PaymentService(uow, MagicMock(), MagicMock())
@@ -43,8 +39,7 @@ async def test_create_payment_intent_stripe_connection_error(
 
 
 @pytest.mark.asyncio
-async def test_create_payment_intent_order_not_found(uow_factory, db_session):
-    uow = uow_factory()
+async def test_create_payment_intent_order_not_found(uow):
     service = PaymentService(uow, MagicMock(), MagicMock())
     with pytest.raises(HTTPException) as exc:
         await service.create_payment_intent(999, 1)
@@ -52,15 +47,13 @@ async def test_create_payment_intent_order_not_found(uow_factory, db_session):
 
 
 @pytest.mark.asyncio
-async def test_create_payment_intent_price_mismatch(
-    uow_factory, db_session, create_order
-):
+async def test_create_payment_intent_price_mismatch(uow, db_session, create_order):
     order = await create_order()
     order.total_amount = Decimal("999.00")
     db_session.add(order)
     await db_session.commit()
     await db_session.refresh(order)
-    uow = uow_factory()
+
     service = PaymentService(uow, MagicMock(), MagicMock())
     with pytest.raises(HTTPException) as exc:
         await service.create_payment_intent(order.id, order.user_id)
@@ -69,7 +62,7 @@ async def test_create_payment_intent_price_mismatch(
 
 
 @pytest.mark.asyncio
-async def test_handle_webhook_succeeded(uow_factory, db_session, paid_payment):
+async def test_handle_webhook_succeeded(uow, db_session, paid_payment):
     paid_payment_id = paid_payment.id
     paid_payment.status = PaymentStatus.PENDING
     await db_session.commit()
@@ -79,25 +72,38 @@ async def test_handle_webhook_succeeded(uow_factory, db_session, paid_payment):
             "type": "payment_intent.succeeded",
             "data": {"object": {"id": paid_payment.external_payment_id}},
         }
-        uow = uow_factory()
         service = PaymentService(uow, MagicMock(), MagicMock())
         result = await service.handle_webhook(b"payload", "sig", MagicMock())
         assert result["status"] == "success"
 
-        # Manually commit if necessary because we removed implicit commit
-        async with uow:
-            await uow.commit()
+        payment = await uow.payments.get_payment_by_id(paid_payment_id)
+        assert payment.status == PaymentStatus.SUCCESSFUL
 
-        # Verify status in database
-        async with uow:
-            payment = await uow.payments.get_payment_by_id(paid_payment_id)
-            assert payment.status == PaymentStatus.SUCCESSFUL
+
+@pytest.mark.asyncio
+async def test_handle_webhook_atomicity_on_error(uow, db_session, paid_payment):
+    paid_payment.status = PaymentStatus.PENDING
+    await db_session.commit()
+
+    with patch("stripe.Webhook.construct_event") as mock_construct:
+        mock_construct.return_value = {
+            "type": "payment_intent.succeeded",
+            "data": {"object": {"id": paid_payment.external_payment_id}},
+        }
+
+        with patch.object(uow.users, "get_user_by_id", return_value=None):
+            service = PaymentService(uow, MagicMock(), MagicMock())
+            result = await service.handle_webhook(b"payload", "sig", MagicMock())
+            assert result["status"] == "ignored"
+            assert result["reason"] == "user not found"
+
+        payment = await uow.payments.get_payment_by_id(paid_payment.id)
+        assert payment.status == PaymentStatus.PENDING
 
 
 @pytest.mark.asyncio
 async def test_get_history(uow_factory, db_session, create_user):
-    # Ensure user has group loaded
-    user = await create_user(group_id=2)  # ADMIN group id = 2
+    user = await create_user(group_id=2)
     stmt = select(User).options(joinedload(User.group)).where(User.id == user.id)
     user = (await db_session.execute(stmt)).scalar_one()
 
