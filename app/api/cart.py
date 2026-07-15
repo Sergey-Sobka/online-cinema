@@ -81,6 +81,10 @@ async def clear_cart(
 @router.post(
     "/{cart_id}/create_order",
     response_model=OrderDetail,
+    summary="Create order",
+    description=(
+        "Create order by cart id. " "You can create order if you are active user."
+    ),
     status_code=status.HTTP_201_CREATED,
 )
 async def create_order(
