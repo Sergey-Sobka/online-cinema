@@ -1,11 +1,14 @@
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import stripe
 from fastapi import BackgroundTasks, HTTPException
+from sqlalchemy import delete
 from stripe import APIConnectionError, SignatureVerificationError, StripeError
 
 from app.core.config import Settings
 from app.core.uow_abstraction import IUnitOfWork
+from app.db.session import AsyncSessionLocal
 from app.models import (
     OrderStatus,
     Payment,
@@ -174,3 +177,15 @@ class PaymentService:
         except StripeError as err:
             raise HTTPException(status_code=400, detail="Stripe not available") from err
         return refund.id
+
+
+async def delete_old_pending_payments() -> int:
+    cutoff_time = datetime.now(UTC) - timedelta(hours=24)
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            delete(Payment)
+            .where(Payment.status == PaymentStatus.PENDING)
+            .where(Payment.created_at <= cutoff_time)
+        )
+        await session.commit()
+        return int(getattr(result, "rowcount", 0))

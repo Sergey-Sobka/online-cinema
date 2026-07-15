@@ -51,7 +51,7 @@ class OrderService:
                     raise HTTPException(
                         status_code=400,
                         detail=f"Order {order.id} with movie_ids "
-                        "{movie_ids} already exists",
+                        f"{movie_ids} already exists",
                     )
             items_data = [
                 {"movie_id": movie.id, "price_at_order": movie.price}
