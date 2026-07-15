@@ -50,3 +50,14 @@ async def require_moderator(
             detail="You do not have permission to modify catalog records.",
         )
     return user
+
+
+async def require_admin(
+    user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    if user.group.name != UserGroupEnum.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to manage users.",
+        )
+    return user

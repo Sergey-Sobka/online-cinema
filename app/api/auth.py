@@ -136,8 +136,8 @@ async def token(
     "/refresh",
     response_model=TokenPairResponse,
     summary="Refresh access token",
-    description="Use a valid refresh token to receive a new access token.",
-    response_description="New access token returned with the same refresh token.",
+    description="Use a valid refresh token to receive a new token pair.",
+    response_description="New access and refresh tokens returned.",
 )
 async def refresh(
     data: RefreshTokenRequest,
