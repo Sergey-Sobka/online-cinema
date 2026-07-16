@@ -64,7 +64,10 @@ class PaymentRepository:
             .options(selectinload(Payment.payment_items))
             .order_by(Payment.created_at.desc())
         )
-        if current_user.group.name not in (UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR):
+        if current_user.group.name not in (
+            UserGroupEnum.ADMIN,
+            UserGroupEnum.MODERATOR,
+        ):
             query = query.where(Payment.user_id == current_user.id)
         else:
             if filters.get("user_id"):

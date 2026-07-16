@@ -65,7 +65,10 @@ class OrderRepository:
             .options(selectinload(Order.order_items))
             .order_by(Order.created_at.desc())
         )
-        if current_user.group.name not in (UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR):
+        if current_user.group.name not in (
+            UserGroupEnum.ADMIN,
+            UserGroupEnum.MODERATOR,
+        ):
             query = query.where(Order.user_id == current_user.id)
         else:
             if filters.get("user_id"):
