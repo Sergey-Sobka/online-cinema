@@ -15,6 +15,10 @@ class OrderService:
     async def place_order(self, current_user: User, cart_id: int) -> Order:
         async with self.uow:
             cart = await self.uow.orders.get_cart_by_id(cart_id)
+            if cart.user_id != current_user.id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You cannot place order with this cart_id")
             if not cart:
                 raise HTTPException(status_code=404, detail="Cart not found")
             movie_ids = list(
@@ -82,7 +86,7 @@ class OrderService:
             raise HTTPException(status_code=404, detail="Order not found")
 
         if (
-            current_user.group.name != UserGroupEnum.ADMIN
+            current_user.group.name not in (UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR)
             and order.user_id != current_user.id
         ):
             raise HTTPException(status_code=403, detail="You cannot view this order")
@@ -99,7 +103,7 @@ class OrderService:
                     status_code=400, detail="Order already canceled or paid"
                 )
             if (
-                current_user.group.name != UserGroupEnum.ADMIN
+                current_user.group.name not in (UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR)
                 and order.user_id != current_user.id
             ):
                 raise HTTPException(
