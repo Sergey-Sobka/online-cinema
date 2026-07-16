@@ -74,3 +74,15 @@ class MovieComment(Base):
     )
 
     user: Mapped["User"] = relationship()
+
+
+class CommentLike(Base):
+    __tablename__ = "comment_likes"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    comment_id: Mapped[int] = mapped_column(
+        ForeignKey("movie_comments.id", ondelete="CASCADE"), primary_key=True
+    )
+    is_like: Mapped[bool] = mapped_column(nullable=False)

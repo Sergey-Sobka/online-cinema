@@ -1,15 +1,12 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
-from app.crud import movies as movies_crud
-from app.crud import social as social_crud
-from app.db.session import get_db_session
 from app.models import MovieComment, User
 from app.schemas.movie import CommentCreate, CommentResponse, PaginatedMovieResponse
-from app.worker import send_comment_notification_task
+from app.services.movies import MovieService, get_movie_service
+from app.services.social import SocialService, get_social_service
 
 router = APIRouter(prefix="/movies", tags=["User Social Actions"])
 
@@ -28,7 +25,7 @@ async def get_user_favorites(
     genre_id: int | None = None,
     search: str | None = None,
     sort_by: str = Query("popularity"),
-    db: AsyncSession = Depends(get_db_session),
+    movie_service: MovieService = Depends(get_movie_service),
     user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -40,8 +37,7 @@ async def get_user_favorites(
     **Permissions Required:**
     - Valid authenticated **User**, **Moderator**, or **Admin** JWT token.
     """
-    total, results = await movies_crud.get_movies_catalog(
-        db,
+    total, results = await movie_service.get_movies_catalog(
         page=page,
         limit=limit,
         year=year,
@@ -65,7 +61,7 @@ async def get_user_favorites(
 )
 async def add_favorite(
     movie_id: int,
-    db: AsyncSession = Depends(get_db_session),
+    social_service: SocialService = Depends(get_social_service),
     user: User = Depends(get_current_user),
 ) -> None:
     """
@@ -76,7 +72,7 @@ async def add_favorite(
     **Permissions Required:**
     - Valid authenticated JWT token.
     """
-    await social_crud.toggle_favorite(db, user.id, movie_id, add=True)
+    await social_service.add_favorite(user.id, movie_id)
 
 
 @router.delete(
@@ -90,7 +86,7 @@ async def add_favorite(
 )
 async def remove_favorite(
     movie_id: int,
-    db: AsyncSession = Depends(get_db_session),
+    social_service: SocialService = Depends(get_social_service),
     user: User = Depends(get_current_user),
 ) -> None:
     """
@@ -102,7 +98,7 @@ async def remove_favorite(
     **Permissions Required:**
     - Valid authenticated JWT token.
     """
-    await social_crud.toggle_favorite(db, user.id, movie_id, add=False)
+    await social_service.remove_favorite(user.id, movie_id)
 
 
 @router.post(
@@ -117,7 +113,7 @@ async def remove_favorite(
 async def like_movie(
     movie_id: int,
     is_like: bool = Query(..., description="True for like, False for dislike"),
-    db: AsyncSession = Depends(get_db_session),
+    social_service: SocialService = Depends(get_social_service),
     user: User = Depends(get_current_user),
 ) -> None:
     """
@@ -130,7 +126,7 @@ async def like_movie(
     **Permissions Required:**
     - Valid authenticated JWT token.
     """
-    await social_crud.set_movie_like(db, user.id, movie_id, is_like)
+    await social_service.like_movie(user.id, movie_id, is_like)
 
 
 @router.post(
@@ -146,7 +142,7 @@ async def like_movie(
 async def rate_movie(
     movie_id: int,
     score: int = Query(..., ge=1, le=10, description="Rating score from 1 to 10"),
-    db: AsyncSession = Depends(get_db_session),
+    social_service: SocialService = Depends(get_social_service),
     user: User = Depends(get_current_user),
 ) -> None:
     """
@@ -158,7 +154,7 @@ async def rate_movie(
     **Permissions Required:**
     - Valid authenticated JWT token.
     """
-    await social_crud.set_movie_rating(db, user.id, movie_id, score)
+    await social_service.rate_movie(user.id, movie_id, score)
 
 
 @router.post(
@@ -178,7 +174,7 @@ async def rate_movie(
 async def add_comment(
     movie_id: int,
     payload: CommentCreate,
-    db: AsyncSession = Depends(get_db_session),
+    social_service: SocialService = Depends(get_social_service),
     user: User = Depends(get_current_user),
 ) -> MovieComment:
     """
@@ -191,17 +187,27 @@ async def add_comment(
     **Permissions Required:**
     - Valid authenticated JWT token.
     """
-    comment = await social_crud.add_movie_comment(db, user.id, movie_id, payload)
+    return await social_service.add_comment(user, movie_id, payload)
 
-    if hasattr(payload, "parent_id") and payload.parent_id is not None:
-        parent_comment = await social_crud.get_comment_by_id(db, payload.parent_id)
 
-        if parent_comment and parent_comment.user_id != user.id:
-            parent_user_email = parent_comment.user.email
-            send_comment_notification_task.delay(
-                recipient_email=parent_user_email,
-                subject="New reply to your comment!",
-                message_body=f"Hello!\n\nUser {user.email} left "
-                f"a reply to your comment on movie #{movie_id}.\n\nThank you!",
-            )
-    return comment
+@router.post(
+    "/comments/{comment_id}/like",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Like or dislike a specific comment",
+    responses={
+        401: {"description": "Authentication token missing or invalid"},
+        404: {"description": "Target comment not found"},
+    },
+)
+async def like_comment(
+    comment_id: int,
+    is_like: bool = Query(..., description="True for like, False for dislike"),
+    social_service: SocialService = Depends(get_social_service),
+    user: User = Depends(get_current_user),
+) -> None:
+    """
+    **Express a like or dislike reaction toward a specific comment.**
+
+    If liked by another user, triggers an email notification to the comment author.
+    """
+    await social_service.like_comment(user, comment_id, is_like)
