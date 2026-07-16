@@ -165,7 +165,7 @@ class PaymentService:
         return await self.uow.payments.get_filtered_payments(current_user, filters)  # type: ignore
 
     async def refund(self, payment_id: int, user: User) -> str | None:
-        if user.group.name != UserGroupEnum.ADMIN:
+        if user.group.name not in (UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR):
             raise HTTPException(status_code=403, detail="Forbidden")
         payment = await self.uow.payments.get_payment_by_id(payment_id)
         if not payment or payment.status != PaymentStatus.SUCCESSFUL:
