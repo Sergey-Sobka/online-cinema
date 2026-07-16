@@ -20,6 +20,14 @@ celery_app.conf.update(
             "task": "online_cinema.cleanup_expired_activation_tokens",
             "schedule": 3600.0,
         },
+        "cleanup-expired-refresh-tokens": {
+            "task": "online_cinema.cleanup_expired_refresh_tokens",
+            "schedule": 3600.0,
+        },
+        "cleanup-expired-password-reset-tokens": {
+            "task": "online_cinema.cleanup_expired_password_reset_tokens",
+            "schedule": 3600.0,
+        },
     },
 )
 
@@ -32,6 +40,20 @@ def celery_health_check() -> str:
 @celery_app.task(name="online_cinema.cleanup_expired_activation_tokens")
 def cleanup_expired_activation_tokens() -> int:
     from app.services.auth import cleanup_expired_activation_tokens as cleanup
+
+    return asyncio.run(cleanup())
+
+
+@celery_app.task(name="online_cinema.cleanup_expired_refresh_tokens")
+def cleanup_expired_refresh_tokens() -> int:
+    from app.services.auth import cleanup_expired_refresh_tokens as cleanup
+
+    return asyncio.run(cleanup())
+
+
+@celery_app.task(name="online_cinema.cleanup_expired_password_reset_tokens")
+def cleanup_expired_password_reset_tokens() -> int:
+    from app.services.auth import cleanup_expired_password_reset_tokens as cleanup
 
     return asyncio.run(cleanup())
 
