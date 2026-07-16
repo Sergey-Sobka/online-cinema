@@ -60,7 +60,7 @@ async def get_order_detail(
     return await service.get_single_order(order_id, current_user)
 
 
-@router.get(
+@router.patch(
     "/{order_id}/cancel",
     status_code=status.HTTP_200_OK,
     summary="Cancel order",
