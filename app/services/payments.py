@@ -175,9 +175,13 @@ class PaymentService:
             if not payment.external_payment_id:
                 raise HTTPException(status_code=400, detail="Payment ID not found")
             try:
-                refund = stripe.Refund.create(payment_intent=payment.external_payment_id)
+                refund = stripe.Refund.create(
+                    payment_intent=payment.external_payment_id
+                )
             except StripeError as err:
-                raise HTTPException(status_code=400, detail="Stripe not available") from err
+                raise HTTPException(
+                    status_code=400, detail="Stripe not available"
+                ) from err
             return refund.id
 
 

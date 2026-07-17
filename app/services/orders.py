@@ -92,7 +92,9 @@ class OrderService:
                 not in (UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR)
                 and order.user_id != current_user.id
             ):
-                raise HTTPException(status_code=403, detail="You cannot view this order")
+                raise HTTPException(
+                    status_code=403, detail="You cannot view this order"
+                )
 
             return order
 
