@@ -4,7 +4,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.models import OrderItem
+from app.models import OrderItem, Order, OrderStatus
 from app.models.movie import Director, Genre, Movie, MovieGenre, Star
 from app.models.social import FavoriteMovie
 from app.schemas.movie import MovieCreate, MovieUpdate
@@ -136,7 +136,16 @@ async def update_movie(
 
 
 async def is_movie_purchased(db: AsyncSession, movie_id: int) -> bool:
-    stmt = select(select(OrderItem.id).where(OrderItem.movie_id == movie_id).exists())
+    stmt = select(
+        select(OrderItem.id)
+        .join(Order, OrderItem.order_id == Order.id)
+        .where(
+            OrderItem.movie_id == movie_id,
+            Order.status
+            == OrderStatus.PAID,
+        )
+        .exists()
+    )
     result = await db.scalar(stmt)
     return result or False
 
