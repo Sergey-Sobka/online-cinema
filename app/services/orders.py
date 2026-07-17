@@ -77,22 +77,24 @@ class OrderService:
     async def get_history(
         self, current_user: User, filters: dict[str, Any]
     ) -> list[Order] | None:
-        return await self.uow.orders.get_filtered_orders(current_user, filters)  # type: ignore
+        async with self.uow:
+            return await self.uow.orders.get_filtered_orders(current_user, filters)  # type: ignore
 
     async def get_single_order(self, order_id: int, current_user: User) -> Order | None:
-        order: Order | None = await self.uow.orders.get_order_by_id(order_id)
+        async with self.uow:
+            order: Order | None = await self.uow.orders.get_order_by_id(order_id)
 
-        if not order:
-            raise HTTPException(status_code=404, detail="Order not found")
+            if not order:
+                raise HTTPException(status_code=404, detail="Order not found")
 
-        if (
-            current_user.group.name
-            not in (UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR)
-            and order.user_id != current_user.id
-        ):
-            raise HTTPException(status_code=403, detail="You cannot view this order")
+            if (
+                current_user.group.name
+                not in (UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR)
+                and order.user_id != current_user.id
+            ):
+                raise HTTPException(status_code=403, detail="You cannot view this order")
 
-        return order
+            return order
 
     async def cancel_order(self, order_id: int, current_user: User) -> dict[str, str]:
         async with self.uow:

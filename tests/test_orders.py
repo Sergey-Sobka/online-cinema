@@ -1,3 +1,4 @@
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 
 import pytest
@@ -172,14 +173,29 @@ async def test_cancel_order_invalid_state(db_session, uow, paid_payment):
     order = await db_session.get(Order, paid_payment.order_id)
     order.status = OrderStatus.PAID
     await db_session.commit()
-
     user = await db_session.scalar(
         select(User)
         .options(joinedload(User.group))
         .where(User.id == paid_payment.user_id)
     )
-
     service = OrderService(uow)
     with pytest.raises(HTTPException) as exc:
         await service.cancel_order(paid_payment.order_id, user)
     assert exc.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_order_history_filters(db_session, uow, create_order):
+    order = await create_order()
+    mocked_time = datetime(2026,7,16,17,59,18, tzinfo=timezone.utc)
+    order.created_at = mocked_time
+    db_session.add(order)
+    await db_session.flush()
+    service = OrderService(uow)
+    filters = {"start_date": mocked_time - timedelta(minutes=1)}
+    user = await db_session.scalar(select(User).options(joinedload(User.group)).where(User.id == order.user_id))
+    success_orders = await service.get_history(user, filters)
+    assert success_orders[0].id == order.id
+    filters["start_date"] = mocked_time + timedelta(minutes=1)
+    no_orders = await service.get_history(user, filters)
+    assert no_orders == []

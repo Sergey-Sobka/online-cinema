@@ -162,21 +162,23 @@ class PaymentService:
     async def get_history(
         self, current_user: User, filters: dict[str, Any]
     ) -> list[Payment] | None:
-        return await self.uow.payments.get_filtered_payments(current_user, filters)  # type: ignore
+        async with self.uow:
+            return await self.uow.payments.get_filtered_payments(current_user, filters)  # type: ignore
 
     async def refund(self, payment_id: int, user: User) -> str | None:
-        if user.group.name not in (UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR):
-            raise HTTPException(status_code=403, detail="Forbidden")
-        payment = await self.uow.payments.get_payment_by_id(payment_id)
-        if not payment or payment.status != PaymentStatus.SUCCESSFUL:
-            raise HTTPException(status_code=400, detail="Invalid payment state")
-        if not payment.external_payment_id:
-            raise HTTPException(status_code=400, detail="Payment ID not found")
-        try:
-            refund = stripe.Refund.create(payment_intent=payment.external_payment_id)
-        except StripeError as err:
-            raise HTTPException(status_code=400, detail="Stripe not available") from err
-        return refund.id
+        async with self.uow:
+            if user.group.name not in (UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR):
+                raise HTTPException(status_code=403, detail="Forbidden")
+            payment = await self.uow.payments.get_payment_by_id(payment_id)
+            if not payment or payment.status != PaymentStatus.SUCCESSFUL:
+                raise HTTPException(status_code=400, detail="Invalid payment state")
+            if not payment.external_payment_id:
+                raise HTTPException(status_code=400, detail="Payment ID not found")
+            try:
+                refund = stripe.Refund.create(payment_intent=payment.external_payment_id)
+            except StripeError as err:
+                raise HTTPException(status_code=400, detail="Stripe not available") from err
+            return refund.id
 
 
 async def delete_old_pending_payments() -> int:
