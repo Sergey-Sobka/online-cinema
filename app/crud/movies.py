@@ -141,8 +141,7 @@ async def is_movie_purchased(db: AsyncSession, movie_id: int) -> bool:
         .join(Order, OrderItem.order_id == Order.id)
         .where(
             OrderItem.movie_id == movie_id,
-            Order.status
-            == OrderStatus.PAID,
+            Order.status == OrderStatus.PAID,
         )
         .exists()
     )
