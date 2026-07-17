@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Enum, ForeignKey, Numeric, String, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -33,7 +33,9 @@ class Payment(Base):
         nullable=False,
     )
     order: Mapped["Order"] = relationship(back_populates="payments")
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
     status: Mapped[PaymentStatus] = mapped_column(
         Enum(PaymentStatus),
         default=PaymentStatus.PENDING,
@@ -47,7 +49,7 @@ class Payment(Base):
 
 
 class PaymentItems(Base):
-    __tablename__ = "payments_items"
+    __tablename__ = "payment_items"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     payment_id: Mapped[int] = mapped_column(

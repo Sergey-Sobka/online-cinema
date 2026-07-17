@@ -5,7 +5,9 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.db.session import get_db_session
+from app.core.uow import SqlAlchemyUnitOfWork
+from app.core.uow_abstraction import IUnitOfWork
+from app.db.session import AsyncSessionLocal, get_db_session
 from app.models import User, UserGroupEnum
 from app.services.auth import get_current_active_user
 from app.services.email import EmailService
@@ -27,18 +29,20 @@ def get_email_service() -> EmailService:
     return EmailService(settings=settings)
 
 
+def get_uow() -> IUnitOfWork:
+    return SqlAlchemyUnitOfWork(AsyncSessionLocal)
+
+
 def get_payment_service(
-    session: Annotated[AsyncSession, Depends(get_db_session)],
+    uow: Annotated[IUnitOfWork, Depends(get_uow)],
     email_service: Annotated[EmailService, Depends(get_email_service)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> PaymentService:
-    return PaymentService(session, settings, email_service)
+    return PaymentService(uow, settings, email_service)
 
 
-def get_order_service(
-    session: Annotated[AsyncSession, Depends(get_db_session)],
-) -> OrderService:
-    return OrderService(session)
+def get_order_service(uow: Annotated[IUnitOfWork, Depends(get_uow)]) -> OrderService:
+    return OrderService(uow)
 
 
 async def require_moderator(
