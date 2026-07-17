@@ -4,7 +4,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.models import OrderItem, Order, OrderStatus
+from app.models import Order, OrderItem, OrderStatus
 from app.models.movie import Director, Genre, Movie, MovieGenre, Star
 from app.models.social import FavoriteMovie
 from app.schemas.movie import MovieCreate, MovieUpdate
