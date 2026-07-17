@@ -4,6 +4,7 @@ from celery import Celery
 
 from app.core.config import get_settings
 from app.services.email import EmailService
+from app.services.payments import delete_old_pending_payments
 
 settings = get_settings()
 
@@ -27,6 +28,10 @@ celery_app.conf.update(
         "cleanup-expired-password-reset-tokens": {
             "task": "online_cinema.cleanup_expired_password_reset_tokens",
             "schedule": 3600.0,
+        },
+        "cleanup-old-payments": {
+            "task": "online_cinema.delete_expired_payments",
+            "schedule": 7200.0,
         },
     },
 )
@@ -70,3 +75,9 @@ def send_comment_notification_task(
         return f"Notification sent to {recipient_email}"
     except Exception as e:
         return f"Failed to send email: {str(e)}"
+
+
+@celery_app.task(name="online_cinema.delete_expired_payments")
+def task_cleanup_old_payments() -> str:
+    count = asyncio.run(delete_old_pending_payments())
+    return f"Deleted {count} expired pending payments."
