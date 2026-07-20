@@ -36,6 +36,8 @@ from app.schemas.auth import (
 from app.services.auth import (
     AuthService,
     cleanup_expired_activation_tokens,
+    cleanup_expired_password_reset_tokens,
+    cleanup_expired_refresh_tokens,
     get_current_active_user,
 )
 from app.services.email import EmailDeliveryError
@@ -262,6 +264,88 @@ async def test_cleanup_expired_activation_tokens(db_session: AsyncSession) -> No
     tokens = (await db_session.execute(select(ActivationToken))).scalars().all()
     assert deleted_count == 1
     assert [token.token for token in tokens] == ["valid"]
+
+
+async def test_cleanup_expired_refresh_tokens(db_session: AsyncSession) -> None:
+    group = (
+        await db_session.execute(
+            select(UserGroup).where(UserGroup.name == UserGroupEnum.USER)
+        )
+    ).scalar_one()
+    user = User(
+        email="refresh@example.com",
+        hashed_password="hash",
+        is_active=True,
+        group=group,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    db_session.add_all(
+        [
+            RefreshToken(
+                user=user,
+                token="expired-refresh",
+                expires_at=datetime.now(UTC) - timedelta(hours=1),
+            ),
+            RefreshToken(
+                user=user,
+                token="valid-refresh",
+                expires_at=datetime.now(UTC) + timedelta(hours=1),
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    deleted_count = await cleanup_expired_refresh_tokens(db_session)
+
+    tokens = (await db_session.execute(select(RefreshToken))).scalars().all()
+    assert deleted_count == 1
+    assert [token.token for token in tokens] == ["valid-refresh"]
+
+
+async def test_cleanup_expired_password_reset_tokens(
+    db_session: AsyncSession,
+) -> None:
+    group = (
+        await db_session.execute(
+            select(UserGroup).where(UserGroup.name == UserGroupEnum.USER)
+        )
+    ).scalar_one()
+    expired_user = User(
+        email="expired-reset@example.com",
+        hashed_password="hash",
+        is_active=True,
+        group=group,
+    )
+    valid_user = User(
+        email="valid-reset@example.com",
+        hashed_password="hash",
+        is_active=True,
+        group=group,
+    )
+    db_session.add_all([expired_user, valid_user])
+    await db_session.flush()
+    db_session.add_all(
+        [
+            PasswordResetToken(
+                user=expired_user,
+                token="expired-reset",
+                expires_at=datetime.now(UTC) - timedelta(hours=1),
+            ),
+            PasswordResetToken(
+                user=valid_user,
+                token="valid-reset",
+                expires_at=datetime.now(UTC) + timedelta(hours=1),
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    deleted_count = await cleanup_expired_password_reset_tokens(db_session)
+
+    tokens = (await db_session.execute(select(PasswordResetToken))).scalars().all()
+    assert deleted_count == 1
+    assert [token.token for token in tokens] == ["valid-reset"]
 
 
 async def test_login_returns_token_pair_and_stores_refresh_token(
