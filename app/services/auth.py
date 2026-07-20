@@ -432,6 +432,42 @@ async def cleanup_expired_activation_tokens(
             await active_session.close()
 
 
+async def cleanup_expired_refresh_tokens(
+    session: AsyncSession | None = None,
+) -> int:
+    close_session = session is None
+    active_session = session or AsyncSessionLocal()
+
+    try:
+        result = await active_session.execute(
+            delete(RefreshToken).where(RefreshToken.expires_at <= datetime.now(UTC))
+        )
+        await active_session.commit()
+        return int(getattr(result, "rowcount", 0) or 0)
+    finally:
+        if close_session:
+            await active_session.close()
+
+
+async def cleanup_expired_password_reset_tokens(
+    session: AsyncSession | None = None,
+) -> int:
+    close_session = session is None
+    active_session = session or AsyncSessionLocal()
+
+    try:
+        result = await active_session.execute(
+            delete(PasswordResetToken).where(
+                PasswordResetToken.expires_at <= datetime.now(UTC)
+            )
+        )
+        await active_session.commit()
+        return int(getattr(result, "rowcount", 0) or 0)
+    finally:
+        if close_session:
+            await active_session.close()
+
+
 def build_auth_service(session: AsyncSession) -> AuthService:
     settings = get_settings()
     return AuthService(session=session, settings=settings)

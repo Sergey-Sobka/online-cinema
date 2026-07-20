@@ -1,11 +1,15 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud, services
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_order_service
 from app.db.session import get_db_session
-from app.models import Cart, CartItem, User
+from app.models import Cart, CartItem, Order, User
 from app.schemas.cart import CartItemRead, CartRead
+from app.schemas.orders import OrderDetail
+from app.services.orders import OrderService
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 
@@ -72,3 +76,21 @@ async def clear_cart(
     await crud.cart.clear_cart(db, cart_id=cart.id)
 
     return None
+
+
+@router.post(
+    "/{cart_id}/create_order",
+    response_model=OrderDetail,
+    summary="Create order",
+    description=(
+        "Create order by cart id. " "You can create order if you are active user."
+    ),
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_order(
+    cart_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    service: Annotated[OrderService, Depends(get_order_service)],
+) -> Order:
+    order = await service.place_order(current_user, cart_id)
+    return order

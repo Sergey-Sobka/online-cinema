@@ -104,6 +104,15 @@ services:
     volumes:
       - minio_data:/data
 
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    command: listen --forward-to api:8000/api/v1/payments/webhook --api-key ${STRIPE_SECRET_KEY}
+    environment:
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+    depends_on:
+      - api
+    restart: always
+
 volumes:
   postgres_data:
   minio_data:
