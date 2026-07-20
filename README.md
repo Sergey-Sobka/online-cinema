@@ -38,6 +38,10 @@ docker compose up --build
 - Swagger docs: http://localhost:8000/docs
 - MinIO console: http://localhost:9001
 
+MinIO object URLs use `MINIO_PUBLIC_ENDPOINT` from `.env.example`.
+For local Docker it should point to `http://localhost:9000`, while the app
+uses the internal `MINIO_ENDPOINT=http://minio:9000` to upload files.
+
 ## Local Development Without Docker
 
 ```bash
@@ -85,12 +89,23 @@ See `docs/github-start-checklist.md` for the initial GitHub setup.
 ## Project Domains
 
 - Authorization and authentication
+- User profiles and avatar storage
 - Movies catalog
 - Shopping cart
 - Orders
 - Payments
 - Swagger/OpenAPI documentation
 - Tests and CI/CD
+
+## User Profile API
+
+Authenticated users can manage their profile data and avatar:
+
+- `GET /api/v1/users/me/profile` returns the current user's profile.
+- `PATCH /api/v1/users/me/profile` updates profile fields such as first name,
+  last name, gender, date of birth, and info.
+- `POST /api/v1/users/me/avatar` uploads an image file to MinIO-compatible
+  storage and stores the avatar URL in the user profile.
 
 ## Useful Commands
 

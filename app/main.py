@@ -9,6 +9,7 @@ from app.api.movies_admin import router as movies_admin_router
 from app.api.orders import router as orders_router
 from app.api.payments import router as payments_router
 from app.api.social import router as social_router
+from app.api.users import router as users_router
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 
@@ -26,6 +27,7 @@ app.include_router(orders_router, prefix=settings.api_v1_prefix)
 app.include_router(payments_router, prefix=settings.api_v1_prefix)
 app.include_router(auth_router, prefix=settings.api_v1_prefix)
 app.include_router(admin_users_router, prefix=settings.api_v1_prefix)
+app.include_router(users_router, prefix=settings.api_v1_prefix)
 app.include_router(cart_router, prefix=settings.api_v1_prefix)
 app.include_router(movies_router, prefix=settings.api_v1_prefix)
 app.include_router(movies_admin_router, prefix=settings.api_v1_prefix)
