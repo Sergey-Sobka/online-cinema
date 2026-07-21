@@ -1,5 +1,7 @@
 import uuid
+from collections.abc import AsyncGenerator
 from decimal import Decimal
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -11,10 +13,13 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.pool import StaticPool
 
 from app.core.dependencies import get_current_user, require_moderator
+from app.core.uow import SqlAlchemyUnitOfWork
 from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
 from app.models import (
+    Cart,
+    CartItem,
     Certification,
     Movie,
     Payment,
@@ -53,7 +58,17 @@ async def client(mock_db, mock_user):
 
 
 @pytest.fixture
-async def db_session() -> AsyncSession:
+async def uow(db_session):
+    return SqlAlchemyUnitOfWork(lambda: db_session)
+
+
+@pytest.fixture
+def uow_factory(db_session):
+    return lambda: SqlAlchemyUnitOfWork(lambda: db_session)
+
+
+@pytest.fixture
+async def db_session() -> AsyncGenerator[AsyncSession, Any]:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
@@ -121,12 +136,20 @@ def create_order(db_session, create_user):
         )
         db_session.add_all([movie_1, movie_2])
         await db_session.flush()
-
         user = user or await create_user()
-        service = OrderService(db_session)
-        order = await service.place_order(
-            current_user=user, movie_ids=[movie_1.id, movie_2.id]
-        )
+
+        cart = Cart(user_id=user.id)
+        db_session.add(cart)
+        await db_session.flush()
+
+        cart_item_1 = CartItem(cart_id=cart.id, movie_id=movie_1.id)
+        cart_item_2 = CartItem(cart_id=cart.id, movie_id=movie_2.id)
+        db_session.add_all([cart_item_1, cart_item_2])
+        await db_session.flush()
+
+        uow = SqlAlchemyUnitOfWork(lambda: db_session)
+        service = OrderService(uow)
+        order = await service.place_order(current_user=user, cart_id=cart.id)
         return order
 
     return _create_order

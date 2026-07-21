@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     minio_root_user: str = "minioadmin"
     minio_root_password: str = "minioadmin"
     minio_endpoint: str = "http://localhost:9000"
+    minio_public_endpoint: str | None = None
     minio_bucket: str = "online-cinema"
 
     stripe_secret_key: str = "sk_test..."
