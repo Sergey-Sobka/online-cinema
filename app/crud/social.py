@@ -4,7 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.movie import Movie
-from app.models.social import FavoriteMovie, MovieComment, MovieLike, MovieRating
+from app.models.social import (
+    CommentLike,
+    FavoriteMovie,
+    MovieComment,
+    MovieLike,
+    MovieRating,
+)
 from app.schemas.movie import CommentCreate
 
 
@@ -85,3 +91,10 @@ async def get_comment_by_id(db: AsyncSession, comment_id: int) -> MovieComment |
         .where(MovieComment.id == comment_id)
     )
     return result.scalar_one_or_none()
+
+
+async def set_comment_like(
+    db: AsyncSession, user_id: int, comment_id: int, is_like: bool
+) -> None:
+    await db.merge(CommentLike(user_id=user_id, comment_id=comment_id, is_like=is_like))
+    await db.commit()

@@ -1,15 +1,13 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, Query
 
-from app.crud import movies as movies_crud
-from app.db.session import get_db_session
 from app.schemas.movie import (
     GenreWithCountResponse,
     MovieResponse,
     PaginatedMovieResponse,
 )
+from app.services.movies import MovieService, get_movie_service
 
 router = APIRouter(prefix="/movies", tags=["Movie Catalog"])
 
@@ -35,7 +33,7 @@ async def get_movies(
         regex="^(popularity|price|release_date)$",
         description="Sort attribute",
     ),
-    db: AsyncSession = Depends(get_db_session),
+    movie_service: MovieService = Depends(get_movie_service),
 ) -> dict[str, Any]:
     """
     **Browse the movie catalog with advanced filtering.**
@@ -49,8 +47,7 @@ async def get_movies(
     title, description, cast, or directors.
     - **Sorting:** Sort results dynamically by popularity, price, or release date.
     """
-    total, results = await movies_crud.get_movies_catalog(
-        db,
+    total, results = await movie_service.get_movies_catalog(
         page=page,
         limit=limit,
         year=year,
@@ -68,7 +65,7 @@ async def get_movies(
     summary="View a list of genres with the count of movies in each",
 )
 async def get_genres_list(
-    db: AsyncSession = Depends(get_db_session),
+    movie_service: MovieService = Depends(get_movie_service),
 ) -> list[dict[str, Any]]:
     """
     **Retrieve a list of all genres.**
@@ -76,7 +73,7 @@ async def get_genres_list(
     Returns a complete list of movie genres available in the database,
     including the total counter of active movies associated with each genre.
     """
-    return await movies_crud.get_genres_with_counts(db)
+    return await movie_service.get_genres_list()
 
 
 @router.get(
@@ -86,7 +83,8 @@ async def get_genres_list(
     responses={404: {"description": "Movie not found"}},
 )
 async def get_movie_detail(
-    movie_id: int, db: AsyncSession = Depends(get_db_session)
+    movie_id: int,
+    movie_service: MovieService = Depends(get_movie_service),
 ) -> Any:
     """
     **Get comprehensive details of a specific movie.**
@@ -95,9 +93,4 @@ async def get_movie_detail(
 
     - **Returns 404:** If the requested movie does not exist.
     """
-    movie = await movies_crud.get_movie_by_id(db, movie_id)
-    if not movie:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found"
-        )
-    return movie
+    return await movie_service.get_movie_detail(movie_id)

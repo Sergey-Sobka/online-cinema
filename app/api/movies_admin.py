@@ -1,11 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, status
 
 from app.core.dependencies import require_moderator
-from app.crud import movies as movies_crud
-from app.db.session import get_db_session
 from app.models import Movie
 from app.schemas.movie import MovieCreate, MovieResponse, MovieUpdate
+from app.services.movies import MovieService, get_movie_service
 
 router = APIRouter(
     prefix="/admin/movies",
@@ -26,7 +24,7 @@ router = APIRouter(
     },
 )
 async def create_new_movie(
-    payload: MovieCreate, db: AsyncSession = Depends(get_db_session)
+    payload: MovieCreate, movie_service: MovieService = Depends(get_movie_service)
 ) -> Movie:
     """
     **Create and register a new movie record in the catalog.**
@@ -37,7 +35,7 @@ async def create_new_movie(
 
     Validates payload input structural constraints and appends records securely.
     """
-    return await movies_crud.create_movie(db, payload)
+    return await movie_service.create_new_movie(payload)
 
 
 @router.put(
@@ -53,7 +51,7 @@ async def create_new_movie(
 async def update_existing_movie(
     movie_id: int,
     payload: MovieUpdate,
-    db: AsyncSession = Depends(get_db_session),
+    movie_service: MovieService = Depends(get_movie_service),
 ) -> Movie | None:
     """
     **Modify an existing movie record.**
@@ -65,12 +63,7 @@ async def update_existing_movie(
     - Must be authenticated via a valid JWT token.
     - User group must be **Admin** or **Moderator**.
     """
-    updated_movie = await movies_crud.update_movie(db, movie_id, payload)
-    if not updated_movie:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found"
-        )
-    return updated_movie
+    return await movie_service.update_existing_movie(movie_id, payload)
 
 
 @router.delete(
@@ -84,7 +77,7 @@ async def update_existing_movie(
     },
 )
 async def delete_existing_movie(
-    movie_id: int, db: AsyncSession = Depends(get_db_session)
+    movie_id: int, movie_service: MovieService = Depends(get_movie_service)
 ) -> None:
     """
     **Permanently remove a movie record from the database storage.**
@@ -96,8 +89,4 @@ async def delete_existing_movie(
     - Must be authenticated via a valid JWT token.
     - User group must be **Admin** or **Moderator**.
     """
-    deleted = await movies_crud.delete_movie(db, movie_id)
-    if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found"
-        )
+    await movie_service.delete_existing_movie(movie_id)

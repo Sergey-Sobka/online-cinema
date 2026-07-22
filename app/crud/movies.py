@@ -1,10 +1,10 @@
 from typing import Any
 
-from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from app.models import Order, OrderItem, OrderStatus
 from app.models.movie import Director, Genre, Movie, MovieGenre, Star
 from app.models.social import FavoriteMovie
 from app.schemas.movie import MovieCreate, MovieUpdate
@@ -135,25 +135,24 @@ async def update_movie(
     return movie
 
 
+async def is_movie_purchased(db: AsyncSession, movie_id: int) -> bool:
+    stmt = select(
+        select(OrderItem.id)
+        .join(Order, OrderItem.order_id == Order.id)
+        .where(
+            OrderItem.movie_id == movie_id,
+            Order.status == OrderStatus.PAID,
+        )
+        .exists()
+    )
+    result = await db.scalar(stmt)
+    return result or False
+
+
 async def delete_movie(db: AsyncSession, movie_id: int) -> bool:
     movie = await db.get(Movie, movie_id)
     if not movie:
         return False
-
-    from sqlalchemy import text
-
-    res = await db.execute(
-        select(1).filter(
-            text("EXISTS(SELECT 1 FROM order_items WHERE movie_id = :mid)")
-        ),
-        {"mid": movie_id},
-    )
-    if res.scalar():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Prevent deletion: "
-            "This movie has been purchased by at least one user.",
-        )
 
     await db.delete(movie)
     await db.commit()
