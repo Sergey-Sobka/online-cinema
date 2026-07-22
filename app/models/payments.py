@@ -43,12 +43,12 @@ class Payment(Base):
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     external_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    payment_items: Mapped[list["PaymentItems"]] = relationship(
+    payment_items: Mapped[list["PaymentItem"]] = relationship(
         back_populates="payment", cascade="all, delete-orphan"
     )
 
 
-class PaymentItems(Base):
+class PaymentItem(Base):
     __tablename__ = "payment_items"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)

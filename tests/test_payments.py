@@ -9,7 +9,19 @@ from sqlalchemy.orm import joinedload
 from stripe import APIConnectionError
 
 from app.models import Payment, PaymentStatus, User
-from app.services.payments import PaymentService
+from app.services.payments import PaymentService, to_stripe_cents
+
+
+@pytest.mark.parametrize(
+    ("amount", "expected_cents"),
+    [
+        (Decimal("25.00"), 2500),
+        (Decimal("10.235"), 1024),
+        (Decimal("10.234"), 1023),
+    ],
+)
+def test_to_stripe_cents_rounds_half_up(amount: Decimal, expected_cents: int) -> None:
+    assert to_stripe_cents(amount) == expected_cents
 
 
 @pytest.mark.asyncio

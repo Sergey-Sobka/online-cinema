@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.models.payments import Payment, PaymentItems
+    from app.models.payments import Payment, PaymentItem
 
 
 class OrderStatus(enum.Enum):
@@ -49,6 +49,6 @@ class OrderItem(Base):
     order: Mapped["Order"] = relationship(back_populates="order_items")
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
     price_at_order: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    payment_items: Mapped[list["PaymentItems"]] = relationship(
+    payment_items: Mapped[list["PaymentItem"]] = relationship(
         back_populates="order_item", cascade="all, delete-orphan"
     )

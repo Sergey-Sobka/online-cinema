@@ -11,11 +11,10 @@ class PaymentCreateSchema(BaseModel):
 
 
 class PaymentItemReadSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     order_item_id: int
     price_at_payment: Decimal
-
-    class Config:
-        from_attributes = True
 
 
 class PaymentReadSchema(BaseModel):

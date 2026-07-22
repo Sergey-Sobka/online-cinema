@@ -41,10 +41,14 @@ services:
       - .:/app
       - /app/.venv
     depends_on:
-      - db
-      - redis
-      - minio
-      - mailpit
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+      mailpit:
+        condition: service_started
 
   db:
     image: postgres:16-alpine
@@ -56,6 +60,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
@@ -71,8 +81,10 @@ services:
     volumes:
       - .:/app
     depends_on:
-      - redis
-      - db
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
 
   celery-beat:
     build:
@@ -83,8 +95,10 @@ services:
     volumes:
       - .:/app
     depends_on:
-      - redis
-      - db
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
 
   mailpit:
     image: axllent/mailpit:v1.20
@@ -106,11 +120,14 @@ services:
 
   stripe-cli:
     image: stripe/stripe-cli:latest
+    profiles:
+      - stripe
     command: listen --forward-to api:8000/api/v1/payments/webhook --api-key ${STRIPE_SECRET_KEY}
     environment:
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
     depends_on:
-      - api
+      api:
+        condition: service_started
     restart: always
 
 volumes:

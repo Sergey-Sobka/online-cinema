@@ -31,6 +31,13 @@ cp .env.example .env
 docker compose up --build
 ```
 
+Stripe webhook forwarding is optional for local development and requires a real
+Stripe test secret key. Start it only when needed:
+
+```bash
+docker compose --profile stripe up --build
+```
+
 3. Open the API:
 
 - API: http://localhost:8000
