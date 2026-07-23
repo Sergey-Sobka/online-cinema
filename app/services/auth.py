@@ -22,6 +22,7 @@ from app.models import (
     Cart,
     PasswordResetToken,
     RefreshToken,
+    RevokedAccessToken,
     User,
     UserGroup,
     UserGroupEnum,
@@ -148,14 +149,17 @@ class AuthService:
         await self._session.commit()
         return self._create_token_pair(user, new_refresh_token.token)
 
-    async def logout(self, data: LogoutRequest) -> MessageResponse:
+    async def logout(self, data: LogoutRequest, access_token: str) -> MessageResponse:
+        await self._revoke_access_token(access_token)
+
         result = await self._session.execute(
             select(RefreshToken).where(RefreshToken.token == data.refresh_token)
         )
         refresh_token = result.scalar_one_or_none()
         if refresh_token is not None:
             await self._session.delete(refresh_token)
-            await self._session.commit()
+
+        await self._session.commit()
 
         return MessageResponse(message="Logged out successfully.")
 
@@ -349,6 +353,17 @@ class AuthService:
             delete(RefreshToken).where(RefreshToken.user_id == user_id)
         )
 
+    async def _revoke_access_token(self, token: str) -> None:
+        payload = decode_access_token_payload(token, self._settings)
+        jti = get_token_jti(payload)
+        expires_at = get_token_expiration(payload)
+
+        existing_token = await self._session.scalar(
+            select(RevokedAccessToken.id).where(RevokedAccessToken.jti == jti)
+        )
+        if existing_token is None:
+            self._session.add(RevokedAccessToken(jti=jti, expires_at=expires_at))
+
 
 def normalize_email(email: str) -> str:
     return email.strip().lower()
@@ -385,20 +400,57 @@ def email_conflict() -> HTTPException:
     )
 
 
+def decode_access_token_payload(token: str, settings: Settings) -> dict[str, object]:
+    try:
+        payload = decode_token(token, settings)
+    except ValueError as exc:
+        raise unauthorized("Invalid access token.") from exc
+
+    if payload.get("type") != "access":
+        raise unauthorized("Invalid access token.")
+    return payload
+
+
+def get_token_jti(payload: dict[str, object]) -> str:
+    jti = payload.get("jti")
+    if not isinstance(jti, str) or not jti:
+        raise unauthorized("Invalid access token.")
+    return jti
+
+
+def get_token_expiration(payload: dict[str, object]) -> datetime:
+    exp = payload.get("exp")
+    if isinstance(exp, datetime):
+        if exp.tzinfo is None:
+            return exp.replace(tzinfo=UTC)
+        return exp
+    if isinstance(exp, int | float):
+        return datetime.fromtimestamp(exp, UTC)
+    raise unauthorized("Invalid access token.")
+
+
+async def is_access_token_revoked(session: AsyncSession, jti: str) -> bool:
+    result = await session.execute(
+        select(RevokedAccessToken.id).where(RevokedAccessToken.jti == jti)
+    )
+    return result.scalar_one_or_none() is not None
+
+
 async def get_current_active_user(
     token: str,
     session: AsyncSession,
     settings: Settings,
 ) -> User:
     try:
-        payload = decode_token(token, settings)
-        token_type = payload.get("type")
+        payload = decode_access_token_payload(token, settings)
+        jti = get_token_jti(payload)
         user_id = int(str(payload.get("sub")))
     except (TypeError, ValueError) as exc:
         raise unauthorized("Invalid access token.") from exc
 
-    if token_type != "access":
+    if await is_access_token_revoked(session, jti):
         raise unauthorized("Invalid access token.")
+
     result = await session.execute(
         select(User).options(selectinload(User.group)).where(User.id == user_id)
     )
@@ -459,6 +511,25 @@ async def cleanup_expired_password_reset_tokens(
         result = await active_session.execute(
             delete(PasswordResetToken).where(
                 PasswordResetToken.expires_at <= datetime.now(UTC)
+            )
+        )
+        await active_session.commit()
+        return int(getattr(result, "rowcount", 0) or 0)
+    finally:
+        if close_session:
+            await active_session.close()
+
+
+async def cleanup_expired_revoked_access_tokens(
+    session: AsyncSession | None = None,
+) -> int:
+    close_session = session is None
+    active_session = session or AsyncSessionLocal()
+
+    try:
+        result = await active_session.execute(
+            delete(RevokedAccessToken).where(
+                RevokedAccessToken.expires_at <= datetime.now(UTC)
             )
         )
         await active_session.commit()
