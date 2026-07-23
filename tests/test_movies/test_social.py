@@ -14,6 +14,15 @@ class TestUserSocialActions:
         response = await client.get("/api/v1/movies/user/favorites")
         assert response.status_code == status.HTTP_200_OK
 
+    @patch("app.services.movies.MovieService.get_movies_catalog")
+    async def test_get_user_favorites_rejects_invalid_sorting(
+        self, mock_service, client
+    ):
+        response = await client.get("/api/v1/movies/user/favorites?sort_by=name")
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        mock_service.assert_not_called()
+
     @patch("app.services.social.SocialService.add_favorite")
     async def test_add_favorite(self, mock_service, client):
         mock_service.return_value = None

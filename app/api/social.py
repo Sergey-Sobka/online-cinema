@@ -2,6 +2,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
 
+from app.api.query_params import MOVIE_SORT_BY_PATTERN
 from app.core.dependencies import get_current_user
 from app.models import MovieComment, User
 from app.schemas.movie import CommentCreate, CommentResponse, PaginatedMovieResponse
@@ -24,7 +25,11 @@ async def get_user_favorites(
     min_rating: float | None = None,
     genre_id: int | None = None,
     search: str | None = None,
-    sort_by: str = Query("popularity"),
+    sort_by: str = Query(
+        "popularity",
+        regex=MOVIE_SORT_BY_PATTERN,
+        description="Sort attribute",
+    ),
     movie_service: MovieService = Depends(get_movie_service),
     user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
