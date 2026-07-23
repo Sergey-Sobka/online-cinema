@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models.orders import OrderStatus
 
@@ -12,13 +12,12 @@ class OrderItemRead(BaseModel):
 
 
 class OrderRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     total_amount: Decimal | None
     status: OrderStatus
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class OrderDetail(OrderRead):

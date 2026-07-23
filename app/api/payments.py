@@ -1,8 +1,6 @@
-import os
 from datetime import datetime
 from typing import Annotated
 
-import stripe
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 
 from app.core.dependencies import get_current_user, get_payment_service
@@ -14,8 +12,6 @@ from app.schemas.payments import (
 )
 from app.services.payments import PaymentService
 
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
