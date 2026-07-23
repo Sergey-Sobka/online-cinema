@@ -2,6 +2,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
+from app.api.query_params import MOVIE_SORT_BY_PATTERN
 from app.schemas.movie import (
     GenreWithCountResponse,
     MovieResponse,
@@ -30,7 +31,7 @@ async def get_movies(
     ),
     sort_by: str = Query(
         "popularity",
-        regex="^(popularity|price|release_date)$",
+        regex=MOVIE_SORT_BY_PATTERN,
         description="Sort attribute",
     ),
     movie_service: MovieService = Depends(get_movie_service),
