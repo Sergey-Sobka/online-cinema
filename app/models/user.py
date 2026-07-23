@@ -125,6 +125,16 @@ class RefreshToken(Base):
     user: Mapped["User"] = relationship(back_populates="refresh_tokens")
 
 
+class RevokedAccessToken(Base):
+    __tablename__ = "revoked_access_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    jti: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+
+
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
 
