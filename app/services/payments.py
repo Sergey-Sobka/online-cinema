@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 import stripe
@@ -12,7 +13,7 @@ from app.db.session import AsyncSessionLocal
 from app.models import (
     OrderStatus,
     Payment,
-    PaymentItems,
+    PaymentItem,
     PaymentStatus,
     User,
     UserGroupEnum,
@@ -59,7 +60,7 @@ class PaymentService:
             )
             for item in order.order_items:
                 new_payment.payment_items.append(
-                    PaymentItems(
+                    PaymentItem(
                         order_item_id=item.id,
                         price_at_payment=item.price_at_order,
                     )
@@ -67,7 +68,7 @@ class PaymentService:
 
             try:
                 intent = stripe.PaymentIntent.create(
-                    amount=int(calculated_total * 100),
+                    amount=to_stripe_cents(calculated_total),
                     currency="usd",
                     metadata={
                         "order_id": str(order.id),
@@ -195,3 +196,7 @@ async def delete_old_pending_payments() -> int:
         )
         await session.commit()
         return int(getattr(result, "rowcount", 0))
+
+
+def to_stripe_cents(amount: Decimal) -> int:
+    return int((amount * Decimal("100")).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
