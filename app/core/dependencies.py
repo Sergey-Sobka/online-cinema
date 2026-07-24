@@ -13,6 +13,7 @@ from app.services.auth import get_current_active_user
 from app.services.email import EmailService
 from app.services.orders import OrderService
 from app.services.payments import PaymentService
+from app.services.purchased_movies import PurchasedMovieService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
@@ -43,6 +44,9 @@ def get_payment_service(
 
 def get_order_service(uow: Annotated[IUnitOfWork, Depends(get_uow)]) -> OrderService:
     return OrderService(uow)
+
+def get_purchased_service(uow: Annotated[IUnitOfWork, Depends(get_uow)]) -> PurchasedMovieService:
+    return PurchasedMovieService(uow)
 
 
 async def require_moderator(
