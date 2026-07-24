@@ -1,3 +1,4 @@
+import os
 import uuid
 from collections.abc import AsyncGenerator
 from decimal import Decimal
@@ -10,7 +11,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import joinedload
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool, StaticPool
+from testcontainers.postgres import PostgresContainer
 
 from app.core.dependencies import get_current_user, require_moderator
 from app.core.uow import SqlAlchemyUnitOfWork
@@ -181,3 +183,38 @@ async def paid_payment(db_session, create_order):
     await db_session.commit()
     await db_session.refresh(payment)
     return payment
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def postgres_container():
+    with PostgresContainer("postgres:15-alpine") as postgres:
+        raw_url = postgres.get_connection_url().replace("psycopg2", "asyncpg")
+        os.environ["DATABASE_URL"] = raw_url
+        engine = create_async_engine(raw_url, poolclass=NullPool)
+
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+
+        async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
+        async with async_session_maker() as session:
+            session.add_all(
+                [
+                    UserGroup(id=1, name=UserGroupEnum.USER),
+                    UserGroup(id=2, name=UserGroupEnum.ADMIN),
+                ]
+            )
+            await session.commit()
+        yield engine
+
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.drop_all)
+        await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def postgres_session(postgres_container):
+    engine = postgres_container
+    async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
+
+    async with async_session_maker() as session:
+        yield session
