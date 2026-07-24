@@ -7,6 +7,7 @@ class IUnitOfWork(ABC):
     orders: Any
     payments: Any
     users: Any
+    purchased_movies: Any
 
     @abstractmethod
     async def commit(self) -> None:
