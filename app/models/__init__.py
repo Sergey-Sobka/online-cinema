@@ -2,6 +2,7 @@ from app.models.cart import Cart, CartItem
 from app.models.movie import Certification, Director, Genre, Movie, Star
 from app.models.orders import Order, OrderItem, OrderStatus
 from app.models.payments import Payment, PaymentItem, PaymentStatus
+from app.models.purchased_movies import PurchasedMovie
 from app.models.social import FavoriteMovie, MovieComment, MovieLike, MovieRating
 from app.models.user import (
     ActivationToken,
@@ -32,6 +33,7 @@ __all__ = [
     "PaymentItem",
     "PaymentStatus",
     "PasswordResetToken",
+    "PurchasedMovie",
     "RefreshToken",
     "Star",
     "User",
