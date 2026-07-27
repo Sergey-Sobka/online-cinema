@@ -25,7 +25,7 @@ class PurchasedMovieService:
             else:
                 return await self.uow.purchased_movies.get_purchased_movies_by_user_id(
                     user_id
-                ) # type: ignore[no-any-return]
+                )
 
     async def create_purchased_movie(self, current_user: User, movie_id: int) -> None:
         async with self.uow:
