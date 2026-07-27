@@ -136,6 +136,10 @@ class PaymentService:
                     PaymentStatus.SUCCESSFUL,
                     OrderStatus.PAID,
                 )
+                for order_item in order.order_items:
+                    await self.uow.purchased_movies.add_purchased_movie(
+                        user.id, order_item.movie_id
+                    )
                 msg = "Your order is paid"
             elif (
                 event_type
