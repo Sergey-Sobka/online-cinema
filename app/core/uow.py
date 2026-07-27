@@ -3,8 +3,9 @@ from typing import Any, cast
 from app.core.uow_abstraction import IUnitOfWork
 from app.repositories.order import OrderRepository
 from app.repositories.payment import PaymentRepository
-from app.repositories.users import UserRepository
 from app.repositories.purchased_movies import PurchasedMovieRepository
+from app.repositories.users import UserRepository
+
 
 class SqlAlchemyUnitOfWork(IUnitOfWork):
     def __init__(self, session_factory: Any) -> None:
