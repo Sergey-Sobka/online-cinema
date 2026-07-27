@@ -45,7 +45,10 @@ def get_payment_service(
 def get_order_service(uow: Annotated[IUnitOfWork, Depends(get_uow)]) -> OrderService:
     return OrderService(uow)
 
-def get_purchased_service(uow: Annotated[IUnitOfWork, Depends(get_uow)]) -> PurchasedMovieService:
+
+def get_purchased_service(
+    uow: Annotated[IUnitOfWork, Depends(get_uow)],
+) -> PurchasedMovieService:
     return PurchasedMovieService(uow)
 
 
