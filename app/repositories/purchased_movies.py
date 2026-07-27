@@ -21,7 +21,7 @@ class PurchasedMovieRepository:
             raise HTTPException(
                 status_code=403,
                 detail="You do not have permission to "
-                       "view other users' purchased movies.",
+                "view other users' purchased movies.",
             )
         return list(result.all())
 

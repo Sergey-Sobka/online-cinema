@@ -20,7 +20,7 @@ class PurchasedMovieService:
                 raise HTTPException(
                     status_code=403,
                     detail="You do not have permission to "
-                           "view other users' purchased movies.",
+                    "view other users' purchased movies.",
                 )
             else:
                 return await self.uow.purchased_movies.get_purchased_movies_by_user_id(
