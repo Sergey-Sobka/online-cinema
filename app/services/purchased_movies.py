@@ -23,10 +23,12 @@ class PurchasedMovieService:
                     "view other users' purchased movies.",
                 )
             else:
-                return await self.uow.purchased_movies.get_purchased_movies_by_user_id( # type: ignore
+                return await self.uow.purchased_movies.get_purchased_movies_by_user_id(  # type: ignore
                     user_id
                 )
 
     async def create_purchased_movie(self, current_user: User, movie_id: int) -> None:
         async with self.uow:
-            await self.uow.purchased_movies.add_purchased_movie(current_user.id, movie_id)
+            await self.uow.purchased_movies.add_purchased_movie(
+                current_user.id, movie_id
+            )

@@ -11,7 +11,9 @@ class PurchasedMovieRepository:
     def __init__(self, session: Any) -> None:
         self._session = session
 
-    async def get_purchased_movies_by_user_id(self, user_id: int) -> list[PurchasedMovie]:
+    async def get_purchased_movies_by_user_id(
+        self, user_id: int
+    ) -> list[PurchasedMovie]:
         result = await self._session.scalars(
             select(PurchasedMovie)
             .options(selectinload(PurchasedMovie.movie))
