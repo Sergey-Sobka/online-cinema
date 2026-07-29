@@ -420,10 +420,6 @@ def get_token_jti(payload: dict[str, object]) -> str:
 
 def get_token_expiration(payload: dict[str, object]) -> datetime:
     exp = payload.get("exp")
-    if isinstance(exp, datetime):
-        if exp.tzinfo is None:
-            return exp.replace(tzinfo=UTC)
-        return exp
     if isinstance(exp, int | float):
         return datetime.fromtimestamp(exp, UTC)
     raise unauthorized("Invalid access token.")
