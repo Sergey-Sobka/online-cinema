@@ -1,6 +1,5 @@
 from typing import Any
 
-from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -20,12 +19,6 @@ class PurchasedMovieRepository:
             .where(PurchasedMovie.user_id == user_id)
         )
         purchased_movies: list[PurchasedMovie] = list(result.all())
-        if not purchased_movies:
-            raise HTTPException(
-                status_code=403,
-                detail="You do not have permission to "
-                "view other users' purchased movies.",
-            )
         return purchased_movies
 
     async def add_purchased_movie(self, user_id: int, movie_id: int) -> None:

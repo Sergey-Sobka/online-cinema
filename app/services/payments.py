@@ -137,12 +137,11 @@ class PaymentService:
                     PaymentStatus.SUCCESSFUL,
                     OrderStatus.PAID,
                 )
-                purchased = (
-                    await self.uow.purchased_movies.get_purchased_movies_by_user_id(
-                        user.id
-                    )
+                purchased_repo = self.uow.purchased_movies
+                user_purchases = await purchased_repo.get_purchased_movies_by_user_id(
+                    user.id
                 )
-                already_purchased = {pm.movie_id for pm in purchased}
+                already_purchased = {pm.movie_id for pm in user_purchases}
                 for order_item in order.order_items:
                     if order_item.movie_id not in already_purchased:
                         await self.uow.purchased_movies.add_purchased_movie(
