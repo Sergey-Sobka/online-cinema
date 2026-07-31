@@ -23,7 +23,7 @@ from app.services.email import EmailService
 
 class PaymentService:
     def __init__(
-            self, uow: IUnitOfWork, settings: Settings, notificator: EmailService
+        self, uow: IUnitOfWork, settings: Settings, notificator: EmailService
     ) -> None:
         self.uow = uow
         self._settings = settings
@@ -53,7 +53,7 @@ class PaymentService:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Payments {payments_with_order_id} "
-                           "with this order already exists or paid",
+                    "with this order already exists or paid",
                 )
             new_payment = await self.uow.payments.create_payment(
                 user_id, order.id, calculated_total
@@ -83,19 +83,20 @@ class PaymentService:
                 raise HTTPException(
                     status_code=503,
                     detail="Payment gateway is currently unavailable. "
-                           "Please try again later.",
+                    "Please try again later.",
                 ) from err
             except Exception as err:
                 raise HTTPException(
                     status_code=500, detail="Internal server error"
                 ) from err
             new_payment.external_payment_id = intent.id
-            return await self.uow.payments.get_payment_by_id(
-                new_payment.id
-            ), intent.client_secret
+            return (
+                await self.uow.payments.get_payment_by_id(new_payment.id),
+                intent.client_secret,
+            )
 
     async def handle_webhook(
-            self, payload: bytes, sig_header: str, background_tasks: BackgroundTasks
+        self, payload: bytes, sig_header: str, background_tasks: BackgroundTasks
     ) -> dict[str, Any]:
         async with self.uow:
             try:
@@ -129,16 +130,19 @@ class PaymentService:
             if not user:
                 return {"status": "ignored", "reason": "user not found"}
             if (
-                    event_type == "payment_intent.succeeded"
-                    and payment.status != PaymentStatus.SUCCESSFUL
+                event_type == "payment_intent.succeeded"
+                and payment.status != PaymentStatus.SUCCESSFUL
             ):
                 payment.status, order.status = (
                     PaymentStatus.SUCCESSFUL,
                     OrderStatus.PAID,
                 )
                 already_purchased = {
-                    pm.movie_id for pm in await
-                    self.uow.purchased_movies.get_purchased_movies_by_user_id(user.id)
+                    pm.movie_id
+                    for pm in await
+                    self.uow.purchased_movies.get_purchased_movies_by_user_id(
+                        user.id
+                    )
                 }
                 for order_item in order.order_items:
                     if order_item.movie_id not in already_purchased:
@@ -147,16 +151,16 @@ class PaymentService:
                         )
                 msg = "Your order is paid"
             elif (
-                    event_type
-                    in ["payment_intent.payment_failed", "payment_intent.canceled"]
-                    and payment.status != PaymentStatus.CANCELED
+                event_type
+                in ["payment_intent.payment_failed", "payment_intent.canceled"]
+                and payment.status != PaymentStatus.CANCELED
             ):
                 payment.status = PaymentStatus.CANCELED
                 order.status = OrderStatus.CANCELED
                 msg = "Your order is canceled"
             elif (
-                    event_type == "charge.refunded"
-                    and payment.status != PaymentStatus.REFUNDED
+                event_type == "charge.refunded"
+                and payment.status != PaymentStatus.REFUNDED
             ):
                 payment.status = PaymentStatus.REFUNDED
                 order.status = OrderStatus.CANCELED
@@ -170,7 +174,7 @@ class PaymentService:
             return {"status": "success"}
 
     async def get_history(
-            self, current_user: User, filters: dict[str, Any]
+        self, current_user: User, filters: dict[str, Any]
     ) -> list[Payment] | None:
         async with self.uow:
             return await self.uow.payments.get_filtered_payments(current_user, filters)  # type: ignore
