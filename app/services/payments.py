@@ -139,8 +139,7 @@ class PaymentService:
                 )
                 already_purchased = {
                     pm.movie_id
-                    for pm in await
-                    self.uow.purchased_movies.get_purchased_movies_by_user_id(
+                    for pm in await self.uow.purchased_movies.get_purchased_movies_by_user_id(
                         user.id
                     )
                 }
