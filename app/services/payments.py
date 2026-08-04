@@ -90,9 +90,10 @@ class PaymentService:
                     status_code=500, detail="Internal server error"
                 ) from err
             new_payment.external_payment_id = intent.id
-            return await self.uow.payments.get_payment_by_id(
-                new_payment.id
-            ), intent.client_secret
+            return (
+                await self.uow.payments.get_payment_by_id(new_payment.id),
+                intent.client_secret,
+            )
 
     async def handle_webhook(
         self, payload: bytes, sig_header: str, background_tasks: BackgroundTasks
@@ -136,6 +137,16 @@ class PaymentService:
                     PaymentStatus.SUCCESSFUL,
                     OrderStatus.PAID,
                 )
+                purchased_repo = self.uow.purchased_movies
+                user_purchases = await purchased_repo.get_purchased_movies_by_user_id(
+                    user.id
+                )
+                already_purchased = {pm.movie_id for pm in user_purchases}
+                for order_item in order.order_items:
+                    if order_item.movie_id not in already_purchased:
+                        await self.uow.purchased_movies.add_purchased_movie(
+                            user.id, order_item.movie_id
+                        )
                 msg = "Your order is paid"
             elif (
                 event_type

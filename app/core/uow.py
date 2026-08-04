@@ -3,6 +3,7 @@ from typing import Any, cast
 from app.core.uow_abstraction import IUnitOfWork
 from app.repositories.order import OrderRepository
 from app.repositories.payment import PaymentRepository
+from app.repositories.purchased_movies import PurchasedMovieRepository
 from app.repositories.users import UserRepository
 
 
@@ -40,6 +41,10 @@ class SqlAlchemyUnitOfWork(IUnitOfWork):
     @property
     def users(self) -> UserRepository:
         return cast(UserRepository, self.get_repo(UserRepository))
+
+    @property
+    def purchased_movies(self) -> PurchasedMovieRepository:
+        return cast(PurchasedMovieRepository, self.get_repo(PurchasedMovieRepository))
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         if exc_type:
