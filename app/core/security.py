@@ -36,6 +36,7 @@ def create_access_token(user_id: int, email: str, settings: Settings) -> str:
         "sub": str(user_id),
         "email": email,
         "type": "access",
+        "jti": secrets.token_urlsafe(16),
         "exp": expires_at,
     }
     token = jwt.encode(payload, settings.jwt_secret_key, settings.jwt_algorithm)

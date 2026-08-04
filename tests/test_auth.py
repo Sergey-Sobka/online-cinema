@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.auth import get_auth_service
 from app.core.config import Settings
 from app.core.dependencies import get_current_user
-from app.core.security import verify_password
+from app.core.security import decode_token, verify_password
 from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
@@ -18,6 +18,7 @@ from app.models import (
     ActivationToken,
     PasswordResetToken,
     RefreshToken,
+    RevokedAccessToken,
     User,
     UserGroup,
     UserGroupEnum,
@@ -38,6 +39,7 @@ from app.services.auth import (
     cleanup_expired_activation_tokens,
     cleanup_expired_password_reset_tokens,
     cleanup_expired_refresh_tokens,
+    cleanup_expired_revoked_access_tokens,
     get_current_active_user,
 )
 from app.services.email import EmailDeliveryError
@@ -79,7 +81,7 @@ class FakeAuthService:
     async def refresh(self, data: RefreshTokenRequest) -> TokenPairResponse:
         return TokenPairResponse(access_token="new-access", refresh_token="refresh")
 
-    async def logout(self, data: LogoutRequest) -> MessageResponse:
+    async def logout(self, data: LogoutRequest, access_token: str) -> MessageResponse:
         return MessageResponse(message="Logged out successfully.")
 
     async def change_password(
@@ -120,6 +122,10 @@ async def db_session() -> AsyncSession:
 @pytest.fixture
 def settings() -> Settings:
     return Settings(activation_token_ttl_hours=24)
+
+
+def test_access_token_ttl_default_matches_env_defaults() -> None:
+    assert Settings().access_token_expire_minutes == 15
 
 
 async def create_active_user(
@@ -348,6 +354,30 @@ async def test_cleanup_expired_password_reset_tokens(
     assert [token.token for token in tokens] == ["valid-reset"]
 
 
+async def test_cleanup_expired_revoked_access_tokens(
+    db_session: AsyncSession,
+) -> None:
+    db_session.add_all(
+        [
+            RevokedAccessToken(
+                jti="expired-access",
+                expires_at=datetime.now(UTC) - timedelta(hours=1),
+            ),
+            RevokedAccessToken(
+                jti="valid-access",
+                expires_at=datetime.now(UTC) + timedelta(hours=1),
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    deleted_count = await cleanup_expired_revoked_access_tokens(db_session)
+
+    tokens = (await db_session.execute(select(RevokedAccessToken))).scalars().all()
+    assert deleted_count == 1
+    assert [token.jti for token in tokens] == ["valid-access"]
+
+
 async def test_login_returns_token_pair_and_stores_refresh_token(
     db_session: AsyncSession,
     settings: Settings,
@@ -367,6 +397,7 @@ async def test_login_returns_token_pair_and_stores_refresh_token(
     assert response.token_type == "bearer"
     assert response.access_token
     assert response.refresh_token == refresh_token.token
+    assert decode_token(response.access_token, settings)["jti"]
 
 
 async def test_login_rejects_inactive_user(
@@ -424,7 +455,7 @@ async def test_refresh_returns_new_access_token(
     assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-async def test_logout_deletes_refresh_token(
+async def test_logout_deletes_refresh_token_and_revokes_access_token(
     db_session: AsyncSession,
     settings: Settings,
 ) -> None:
@@ -435,14 +466,35 @@ async def test_logout_deletes_refresh_token(
     )
 
     response = await service.logout(
-        LogoutRequest(refresh_token=login_response.refresh_token)
+        LogoutRequest(refresh_token=login_response.refresh_token),
+        login_response.access_token,
     )
 
     refresh_token = (
         await db_session.execute(select(RefreshToken))
     ).scalar_one_or_none()
+    revoked_token = (
+        await db_session.execute(select(RevokedAccessToken))
+    ).scalar_one_or_none()
     assert response.message == "Logged out successfully."
     assert refresh_token is None
+    assert revoked_token is not None
+    assert (
+        revoked_token.jti == decode_token(login_response.access_token, settings)["jti"]
+    )
+    revoked_token_expires_at = revoked_token.expires_at
+    if revoked_token_expires_at.tzinfo is None:
+        revoked_token_expires_at = revoked_token_expires_at.replace(tzinfo=UTC)
+    assert revoked_token_expires_at > datetime.now(UTC)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_current_active_user(
+            login_response.access_token,
+            db_session,
+            settings,
+        )
+
+    assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 async def test_get_current_active_user_returns_user(
