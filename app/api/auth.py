@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, oauth2_scheme
 from app.db.session import get_db_session
 from app.models import User
 from app.schemas.auth import (
@@ -150,14 +150,18 @@ async def refresh(
     "/logout",
     response_model=MessageResponse,
     summary="Logout user",
-    description="Delete the provided refresh token so it cannot be used again.",
-    response_description="Refresh token revoked.",
+    description=(
+        "Delete the provided refresh token and revoke the current access token "
+        "from the Authorization header until it expires."
+    ),
+    response_description="Refresh token deleted and access token revoked.",
 )
 async def logout(
     data: LogoutRequest,
+    access_token: Annotated[str, Depends(oauth2_scheme)],
     service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> MessageResponse:
-    return await service.logout(data)
+    return await service.logout(data, access_token)
 
 
 @router.get(
