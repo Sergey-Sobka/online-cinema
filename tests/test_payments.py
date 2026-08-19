@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
@@ -8,7 +9,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from stripe import APIConnectionError
 
-from app.models import Payment, PaymentStatus, User
+from app.core.uow import SqlAlchemyUnitOfWork
+from app.models import (
+    Cart,
+    CartItem,
+    Certification,
+    Movie,
+    Payment,
+    PaymentStatus,
+    User,
+)
+from app.services.orders import OrderService
 from app.services.payments import PaymentService, to_stripe_cents
 
 
@@ -156,3 +167,73 @@ async def test_refund_stripe_error(uow_factory, db_session, admin_user, paid_pay
         with pytest.raises(HTTPException):
             async with uow:
                 await service.refund(paid_payment.id, admin_user)
+
+
+@pytest.mark.asyncio
+async def test_timezone_aware_created_at_values(postgres_session):
+    """
+    This test is used postgres session because sqlite not add timezone
+    even if we use Datetime(timezone=True) in models. For avoid duplicate
+    code, test for orders aware timezone in this test too.
+    """
+    certification = Certification(name="Name")
+    postgres_session.add(certification)
+    await postgres_session.flush()
+    movie_1 = Movie(
+        name="Movie",
+        uuid=uuid.uuid4(),
+        year=2020,
+        time=90,
+        imdb=4,
+        votes=100,
+        meta_score=6,
+        description="d",
+        price=Decimal("100"),
+        certification_id=certification.id,
+    )
+    movie_2 = Movie(
+        name="Movie2",
+        uuid=uuid.uuid4(),
+        year=2020,
+        time=90,
+        imdb=4,
+        votes=100,
+        meta_score=6,
+        description="d",
+        price=Decimal("100"),
+        certification_id=certification.id,
+    )
+    postgres_session.add_all([movie_1, movie_2])
+    await postgres_session.flush()
+    user = User(
+        email=f"user_{uuid.uuid4().hex[:8]}@example.com",
+        hashed_password="test123456789",
+        is_active=True,
+        group_id=1,
+    )
+    postgres_session.add(user)
+    await postgres_session.commit()
+    await postgres_session.refresh(user)
+    cart = Cart(user_id=user.id)
+    postgres_session.add(cart)
+    await postgres_session.flush()
+
+    cart_item_1 = CartItem(cart_id=cart.id, movie_id=movie_1.id)
+    cart_item_2 = CartItem(cart_id=cart.id, movie_id=movie_2.id)
+    postgres_session.add_all([cart_item_1, cart_item_2])
+    await postgres_session.flush()
+    uow = SqlAlchemyUnitOfWork(lambda: postgres_session)
+    service = OrderService(uow)
+    order = await service.place_order(current_user=user, cart_id=cart.id)
+    payment = Payment(
+        user_id=order.user_id,
+        order_id=order.id,
+        amount=Decimal(200),
+        external_payment_id=f"pi_{uuid.uuid4().hex}",
+        status=PaymentStatus.SUCCESSFUL,
+    )
+    postgres_session.add(payment)
+    await postgres_session.commit()
+    await postgres_session.refresh(payment)
+    assert payment.created_at.tzinfo is not None
+    assert order.created_at.tzinfo is not None
